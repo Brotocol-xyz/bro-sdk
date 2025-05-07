@@ -4,6 +4,14 @@ import { EVMEndpointContract } from "../evmUtils/evmContractAddresses"
 import { BigNumber } from "../utils/BigNumber"
 import { InvalidMethodParametersError } from "../utils/errors"
 
+/**
+ * A branded literal type used for SDK-specific types `ChainId`, `TokenId` and `SDKNumber`.
+ * 
+ * For example: 
+ * - `"bitcoin-mainnet (BroSDK ChainId)"` represents a valid `ChainId`
+ * - `"brc20-something (BroSDK TokenId)"` represents a valid `TokenId`
+ * - `"10 (BroSDK number)"` represents a valid `SDKNumber`
+ */
 type SDKBrandedLiteral<
   Type extends string,
   T extends string | number,
