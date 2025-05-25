@@ -1,6 +1,8 @@
 import { getEVMSupportedRoutesByChainType } from "../evmUtils/apiHelpers/getEVMSupportedRoutes"
 import { getBRC20SupportedRoutes } from "../metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import { getRunesSupportedRoutes } from "../metaUtils/apiHelpers/getRunesSupportedRoutes"
+import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
+import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
 import { SDKGlobalContext } from "../sdkUtils/types.internal"
 import { KnownRoute } from "./buildSupportedRoutes"
 import { KnownChainId, KnownTokenId } from "./types/knownIds"
@@ -25,7 +27,7 @@ export async function detectPossibleRoutes(
     return ctx.routes.detectedCache.get(networkType)!
   }
 
-  const [evmRoutes, brc20Routes, runesRoutes] = await Promise.all([
+  const [evmRoutes, brc20Routes, runesRoutes, tronRoutes, solanaRoutes] = await Promise.all([
     getEVMSupportedRoutesByChainType(ctx, networkType).then(routes =>
       routes.map(
         r =>
@@ -69,6 +71,38 @@ export async function detectPossibleRoutes(
           }) satisfies FetchedRoute,
       ),
     ),
+    getTronSupportedRoutes(
+      ctx,
+      networkType === "mainnet"
+        ? KnownChainId.Tron.Mainnet
+        : KnownChainId.Tron.Testnet,
+    ).then(routes =>
+      routes.map(
+        r =>
+          ({
+            baseStacksChain: r.stacksChain,
+            baseStacksToken: r.stacksToken,
+            pairedTokenChain: networkType === "mainnet" ? KnownChainId.Tron.Mainnet : KnownChainId.Tron.Testnet,
+            pairedToken: r.tronToken,
+          }) satisfies FetchedRoute,
+      ),
+    ),
+    getSolanaSupportedRoutes(
+      ctx,
+      networkType === "mainnet"
+        ? KnownChainId.Solana.Mainnet
+        : KnownChainId.Solana.Testnet,
+    ).then(routes =>
+      routes.map(
+        r =>
+          ({
+            baseStacksChain: r.stacksChain,
+            baseStacksToken: r.stacksToken,
+            pairedTokenChain: networkType === "mainnet" ? KnownChainId.Solana.Mainnet : KnownChainId.Solana.Testnet,
+            pairedToken: r.solanaToken,
+          }) satisfies FetchedRoute,
+      ),
+    ),
   ])
   const bitcoinRoutes = (
     networkType === "mainnet"
@@ -95,6 +129,8 @@ export async function detectPossibleRoutes(
     ...bitcoinRoutes,
     ...brc20Routes,
     ...runesRoutes,
+    ...tronRoutes,
+    ...solanaRoutes,
   ]
 
   const result: KnownRoute[] = []
@@ -192,6 +228,60 @@ export async function detectPossibleRoutes(
 
   // runes > *
   for (const routeFrom of runesRoutes) {
+    result.push({
+      fromChain: routeFrom.pairedTokenChain,
+      fromToken: routeFrom.pairedToken,
+      toChain: routeFrom.baseStacksChain,
+      toToken: routeFrom.baseStacksToken,
+    })
+
+    for (const routeTo of allRoutes) {
+      const isSameRoute =
+        routeFrom.pairedTokenChain === routeTo.pairedTokenChain &&
+        routeFrom.pairedToken === routeTo.pairedToken
+      const isSameBaseStacksToken =
+        routeFrom.baseStacksChain === routeTo.baseStacksChain &&
+        routeFrom.baseStacksToken === routeTo.baseStacksToken
+      if (isSameRoute) continue
+      if (!swapEnabled && !isSameBaseStacksToken) continue
+      result.push({
+        fromChain: routeFrom.pairedTokenChain,
+        fromToken: routeFrom.pairedToken,
+        toChain: routeTo.pairedTokenChain,
+        toToken: routeTo.pairedToken,
+      } as KnownRoute)
+    }
+  }
+
+  // tron > *
+  for (const routeFrom of tronRoutes) {
+    result.push({
+      fromChain: routeFrom.pairedTokenChain,
+      fromToken: routeFrom.pairedToken,
+      toChain: routeFrom.baseStacksChain,
+      toToken: routeFrom.baseStacksToken,
+    })
+
+    for (const routeTo of allRoutes) {
+      const isSameRoute =
+        routeFrom.pairedTokenChain === routeTo.pairedTokenChain &&
+        routeFrom.pairedToken === routeTo.pairedToken
+      const isSameBaseStacksToken =
+        routeFrom.baseStacksChain === routeTo.baseStacksChain &&
+        routeFrom.baseStacksToken === routeTo.baseStacksToken
+      if (isSameRoute) continue
+      if (!swapEnabled && !isSameBaseStacksToken) continue
+      result.push({
+        fromChain: routeFrom.pairedTokenChain,
+        fromToken: routeFrom.pairedToken,
+        toChain: routeTo.pairedTokenChain,
+        toToken: routeTo.pairedToken,
+      } as KnownRoute)
+    }
+  }
+
+  // solana > *
+  for (const routeFrom of solanaRoutes) {
     result.push({
       fromChain: routeFrom.pairedTokenChain,
       fromToken: routeFrom.pairedToken,

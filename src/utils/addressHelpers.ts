@@ -12,6 +12,7 @@ import { StacksAddressVersionNotSupportedError } from "./errors"
 import { decodeHex, encodeHex, encodeZeroPrefixedHex } from "./hexHelpers"
 import { checkNever } from "./typeHelpers"
 import { KnownChainId } from "./types/knownIds"
+import bs58check from "bs58check"
 
 export function addressFromBuffer(
   chain: KnownChainId.KnownChain,
@@ -45,6 +46,14 @@ export function addressFromBuffer(
   }
 
   if (KnownChainId.isEVMChain(chain)) {
+    return encodeZeroPrefixedHex(buffer)
+  }
+
+  if (KnownChainId.isTronChain(chain)) {
+    return bs58check.encode(buffer)
+  }
+
+  if (KnownChainId.isSolanaChain(chain)) {
     return encodeZeroPrefixedHex(buffer)
   }
 
@@ -97,6 +106,14 @@ export function addressToBuffer(
   }
 
   if (KnownChainId.isEVMChain(chain)) {
+    return decodeHex(address)
+  }
+
+  if (KnownChainId.isTronChain(chain)) {
+    return bs58check.decode(address)
+  }
+
+  if (KnownChainId.isSolanaChain(chain)) {
     return decodeHex(address)
   }
 

@@ -9,6 +9,8 @@ import { pMemoizeImpl } from "../utils/pMemoize"
 import { GeneralCacheInterface } from "../utils/types/GeneralCacheInterface"
 import { KnownChainId } from "../utils/types/knownIds"
 import { TransferProphet } from "../utils/types/TransferProphet"
+import { TronSupportedRoute } from "../tronUtils/types"
+import { SolanaSupportedRoute } from "../solanaUtils/types"
 
 export interface SDKGlobalContextCache<K, V>
   extends GeneralCacheInterface<K, V> {}
@@ -85,5 +87,17 @@ export interface SDKGlobalContext {
       Promise<EVMOnChainConfigByEVMChain>
     >
     viemClients: Partial<Record<KnownChainId.EVMChain, Client>>
+  }
+  tron: {
+    routesConfigCache?: SDKGlobalContextCache<
+      "mainnet" | "testnet",
+      Promise<TronSupportedRoute[]>
+    >
+  }
+  solana: {
+    routesConfigCache?: SDKGlobalContextCache<
+      "mainnet" | "testnet",
+      Promise<SolanaSupportedRoute[]>
+    >
   }
 }
