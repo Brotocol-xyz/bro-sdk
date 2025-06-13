@@ -11,6 +11,8 @@ import {
 import { sendMessageAbi } from "../evmUtils/contractMessageHelpers"
 import { isSupportedEVMRoute } from "../evmUtils/peggingHelpers"
 import { metaTokenToCorrespondingStacksToken } from "../metaUtils/peggingHelpers"
+import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
+import { solanaTokenToCorrespondingStacksToken } from "../solanaUtils/peggingHelpers"
 import { getStacksTokenContractInfo } from "../stacksUtils/contractHelpers"
 import { contractAssignedChainIdFromKnownChain } from "../stacksUtils/crossContractDataMapping"
 import { addressToBuffer } from "../utils/addressHelpers"
@@ -21,7 +23,9 @@ import {
   KnownRoute_FromEVM_ToBRC20,
   KnownRoute_FromEVM_ToEVM,
   KnownRoute_FromEVM_ToRunes,
+  KnownRoute_FromEVM_ToSolana,
   KnownRoute_FromEVM_ToStacks,
+  KnownRoute_FromEVM_ToTron,
 } from "../utils/buildSupportedRoutes"
 import {
   InvalidMethodParametersError,
@@ -143,6 +147,32 @@ export async function bridgeFromEVM(
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeFromEVM_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeFromEVM_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
     } else {
       checkNever(route.toChain)
     }
@@ -151,6 +181,8 @@ export async function bridgeFromEVM(
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
     checkNever(route)
   }
 
@@ -442,6 +474,123 @@ async function bridgeFromEVM_toEVM(
   })
 }
 
+async function bridgeFromEVM_toSolana(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeFromEVMInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromEVM_ToSolana,
+): Promise<BridgeFromEVMOutput> {
+  const { bridgeEndpointContractAddress: bridgeEndpointAddress } =
+    (await getEVMContractCallInfo(ctx, info.fromChain)) ?? {}
+  const fromTokenContractInfo = await getEVMTokenContractInfo(
+    ctx,
+    info.fromChain,
+    info.fromToken,
+  )
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.toChain)
+  const toTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.toToken)
+  if (toTokenContractInfo == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+  const toTokenCorrespondingStacksToken = await solanaTokenToCorrespondingStacksToken(
+    ctx,
+    info.toChain,
+    info.toToken,
+  )
+  const toTokenStacksAddress = toTokenCorrespondingStacksToken == null
+    ? undefined
+    : await getStacksTokenContractInfo(
+      ctx,
+      KnownChainId.isEVMMainnetChain(info.fromChain)
+        ? KnownChainId.Stacks.Mainnet
+        : KnownChainId.Stacks.Testnet,
+      toTokenCorrespondingStacksToken,
+    )
+
+  const fromTokenContractAddress = fromTokenContractInfo?.tokenContractAddress
+  if (
+    bridgeEndpointAddress == null ||
+    fromTokenContractInfo == null ||
+    fromTokenContractAddress == null ||
+    fromTokenContractAddress === evmNativeCurrencyAddress ||
+    toTokenCorrespondingStacksToken == null ||
+    toTokenStacksAddress == null
+  ) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  // i want the code below to typecheck
+  if (1 % 2 === 1) {
+    throw new Error(`Not implemented, ${toTokenContractInfo.solanaTokenAddress} need new EVM messages`)
+  }
+
+  const message = await encodeFunctionData({
+    abi: sendMessageAbi,
+    functionName: "transferToEVM",
+    args: [
+      contractAssignedChainIdFromKnownChain(info.toChain),
+      toTokenContractInfo.solanaTokenAddress as `0x${string}`, // TODO: fix this
+      info.toAddress as EVMAddress,
+    ],
+  })
+  const functionData = await encodeFunctionData({
+    abi: BridgeEndpointAbi,
+    functionName: "sendMessageWithToken",
+    args: [
+      fromTokenContractAddress,
+      numberToSolidityContractNumber(info.amount),
+      message,
+    ],
+  })
+
+  const fallbackGasLimit = 200_000
+  const estimated = await estimateGas(fromTokenContractInfo.client, {
+    account: info.fromAddress,
+    to: bridgeEndpointAddress,
+    data: functionData,
+  })
+    .then(n =>
+      BigNumber.round(
+        { precision: 0 },
+        BigNumber.max([fallbackGasLimit, BigNumber.mul(n, 1.2)]),
+      ),
+    )
+    .catch(
+      // add a fallback in case estimate failed
+      () => fallbackGasLimit,
+    )
+
+  return await info.sendTransaction({
+    from: info.fromAddress,
+    to: bridgeEndpointAddress,
+    data: decodeHex(functionData),
+    recommendedGasLimit: toSDKNumberOrUndefined(estimated),
+  })
+}
+
+async function bridgeFromEVM_toTron(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeFromEVMInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromEVM_ToTron,
+): Promise<BridgeFromEVMOutput> {
+  throw new Error(`Not implemented, ${info.toToken} EVM to TRON need contract update`)
+}
+
 async function bridgeFromEVM_toMeta(
   ctx: SDKGlobalContext,
   info: Omit<
@@ -467,12 +616,12 @@ async function bridgeFromEVM_toMeta(
     toTokenCorrespondingStacksToken == null
       ? undefined
       : await getStacksTokenContractInfo(
-          ctx,
-          KnownChainId.isEVMMainnetChain(info.fromChain)
-            ? KnownChainId.Stacks.Mainnet
-            : KnownChainId.Stacks.Testnet,
-          toTokenCorrespondingStacksToken,
-        )
+        ctx,
+        KnownChainId.isEVMMainnetChain(info.fromChain)
+          ? KnownChainId.Stacks.Mainnet
+          : KnownChainId.Stacks.Testnet,
+        toTokenCorrespondingStacksToken,
+      )
 
   if (
     bridgeEndpointAddress == null ||

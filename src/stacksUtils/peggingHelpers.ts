@@ -1,6 +1,8 @@
 import { getEVMSupportedRoutes } from "../evmUtils/apiHelpers/getEVMSupportedRoutes"
 import { getBRC20SupportedRoutes } from "../metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import { getRunesSupportedRoutes } from "../metaUtils/apiHelpers/getRunesSupportedRoutes"
+import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
+import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
 import { IsSupportedFn } from "../utils/buildSupportedRoutes"
 import { checkNever } from "../utils/typeHelpers"
 import {
@@ -79,6 +81,28 @@ export const isSupportedStacksRoute: IsSupportedFn = async (ctx, route) => {
 
     return supportedRoutes.some(
       route => route.stacksToken === fromToken && route.runesToken === toToken,
+    )
+  }
+
+  // stacks -> tron
+  if (KnownChainId.isTronChain(toChain)) {
+    if (!KnownTokenId.isTronToken(toToken)) return false
+
+    const supportedRoutes = await getTronSupportedRoutes(ctx, toChain)
+
+    return supportedRoutes.some(
+      route => route.stacksToken === fromToken && route.tronToken === toToken,
+    )
+  }
+
+  // stacks -> solana
+  if (KnownChainId.isSolanaChain(toChain)) {
+    if (!KnownTokenId.isSolanaToken(toToken)) return false
+
+    const supportedRoutes = await getSolanaSupportedRoutes(ctx, toChain)
+
+    return supportedRoutes.some(
+      route => route.stacksToken === fromToken && route.solanaToken === toToken,
     )
   }
 

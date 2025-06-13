@@ -8,6 +8,7 @@ import {
   getALEXSwapParameters_FromMeta,
   getPossibleEVMDexAggregatorSwapParameters_FromMeta,
 } from "./metaUtils/swapHelpers"
+import { getALEXSwapParameters_FromSolana } from "./solanaUtils/swapHelpers"
 import { BigNumber } from "./utils/BigNumber"
 import { KnownRoute } from "./utils/buildSupportedRoutes"
 import { ALEXSwapParameters as _ALEXSwapParameters } from "./utils/swapHelpers/alexSwapParametersHelpers"
@@ -80,6 +81,18 @@ export async function getALEXSwapParameters(
       toToken: info.toToken as any,
       amount: BigNumber.from(info.amount),
     })
+  } else if (KnownChainId.isSolanaChain(info.fromChain)) {
+    if (!KnownTokenId.isSolanaToken(info.fromToken)) return
+    params = await getALEXSwapParameters_FromSolana(getSDKContext(sdk), {
+      fromChain: info.fromChain,
+      fromToken: info.fromToken,
+      toChain: info.toChain as any,
+      toToken: info.toToken as any,
+      amount: BigNumber.from(info.amount),
+    })
+  } else if (KnownChainId.isTronChain(info.fromChain)) {
+    // Tron swap parameters not yet implemented
+    return
   } else {
     checkNever(info.fromChain)
   }
@@ -186,6 +199,16 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
         fromAmount: toSDKNumberOrUndefined(r.fromAmount),
       }),
     )
+  }
+
+  if (KnownChainId.isSolanaChain(info.fromChain)) {
+    // Solana EVM DEX aggregator swap parameters not yet implemented
+    return []
+  }
+
+  if (KnownChainId.isTronChain(info.fromChain)) {
+    // Tron EVM DEX aggregator swap parameters not yet implemented
+    return []
   }
 
   checkNever(info.fromChain)

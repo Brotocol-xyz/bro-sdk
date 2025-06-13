@@ -1,5 +1,6 @@
 import { unwrapResponse } from "clarity-codegen"
-import { getTerminatingStacksTokenContractAddress } from "../evmUtils/peggingHelpers"
+import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressEVM } from "../evmUtils/peggingHelpers"
+import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressSolana } from "../solanaUtils/peggingHelpers"
 import { addressToBuffer } from "../utils/addressHelpers"
 import {
   KnownRoute_FromMeta,
@@ -7,6 +8,8 @@ import {
   KnownRoute_FromMeta_ToEVM,
   KnownRoute_FromMeta_ToMeta,
   KnownRoute_FromMeta_ToStacks,
+  KnownRoute_FromMeta_ToSolana,
+  KnownRoute_FromMeta_ToTron,
 } from "../utils/buildSupportedRoutes"
 import { UnsupportedBridgeRouteError } from "../utils/errors"
 import { decodeHex } from "../utils/hexHelpers"
@@ -31,6 +34,8 @@ import {
   getStacksTokenContractInfo,
   numberToStacksContractNumber,
 } from "./contractHelpers"
+import { isEVMAddress } from "../sdkUtils/types"
+import bs58check from "bs58check"
 
 export async function createBridgeOrderFromMeta(
   sdkContext: SDKGlobalContext,
@@ -54,16 +59,40 @@ export async function createBridgeOrderFromMeta(
   assertExclude(info.toChain, assertExclude.i<KnownChainId.StacksChain>())
 
   if (KnownChainId.isEVMChain(info.toChain)) {
-    if (KnownTokenId.isEVMToken(info.toToken)) {
+    if (KnownTokenId.isEVMToken(info.toToken) && isEVMAddress(info.toAddress)) {
       return createBridgeOrder_MetaToEVM(sdkContext, {
         ...info,
         toChain: info.toChain,
         toToken: info.toToken,
-        toEVMAddress: info.toAddress as EVMAddress,
+        toEVMAddress: info.toAddress,
       })
     }
   }
   assertExclude(info.toChain, assertExclude.i<KnownChainId.EVMChain>())
+
+  if (KnownChainId.isSolanaChain(info.toChain)) {
+    if (KnownTokenId.isSolanaToken(info.toToken)) {
+      return createBridgeOrder_MetaToSolana(sdkContext, {
+        ...info,
+        toChain: info.toChain,
+        toToken: info.toToken,
+        toSolanaAddress: info.toAddress,
+      })
+    }
+  }
+  assertExclude(info.toChain, assertExclude.i<KnownChainId.SolanaChain>())
+
+  if (KnownChainId.isTronChain(info.toChain)) {
+    if (KnownTokenId.isTronToken(info.toToken)) {
+      return createBridgeOrder_MetaToTron(sdkContext, {
+        ...info,
+        toChain: info.toChain,
+        toToken: info.toToken,
+        toTronAddress: info.toAddress,
+      })
+    }
+  }
+  assertExclude(info.toChain, assertExclude.i<KnownChainId.TronChain>())
 
   if (KnownChainId.isBitcoinChain(info.toChain)) {
     if (KnownTokenId.isBitcoinToken(info.toToken)) {
@@ -180,6 +209,36 @@ export async function createBridgeOrder_MetaToMeta(
   })
 }
 
+export async function createBridgeOrder_MetaToSolana(
+  sdkContext: SDKGlobalContext,
+  info: KnownRoute_FromMeta_ToSolana & {
+    fromBitcoinScriptPubKey: Uint8Array
+    toSolanaAddress: string
+    swap?: SwapRoute_WithMinimumAmountsToReceive
+  },
+): Promise<undefined | CreateBridgeOrderResult> {
+  return createBridgeOrderFromMetaImpl(sdkContext, {
+    ...info,
+    fromAddressBuffer: info.fromBitcoinScriptPubKey,
+    toAddressBuffer: addressToBuffer(info.toChain, info.toSolanaAddress),
+  })
+}
+
+export async function createBridgeOrder_MetaToTron(
+  sdkContext: SDKGlobalContext,
+  info: KnownRoute_FromMeta_ToTron & {
+    fromBitcoinScriptPubKey: Uint8Array
+    toTronAddress: string
+    swap?: SwapRoute_WithMinimumAmountsToReceive
+  },
+): Promise<undefined | CreateBridgeOrderResult> {
+  return createBridgeOrderFromMetaImpl(sdkContext, {
+    ...info,
+    fromAddressBuffer: info.fromBitcoinScriptPubKey,
+    toAddressBuffer: bs58check.decode(info.toTronAddress),
+  })
+}
+
 async function createBridgeOrderFromMetaImpl(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta & {
@@ -259,10 +318,17 @@ async function createBridgeOrderFromMetaImpl(
   const tokenOutStacksAddress =
     (KnownChainId.isEVMChain(info.toChain) &&
     KnownTokenId.isEVMToken(info.toToken)
-      ? await getTerminatingStacksTokenContractAddress(sdkContext, {
+      ? await getTerminatingStacksTokenContractAddressEVM(sdkContext, {
           stacksChain: transitStacksChain,
           evmChain: info.toChain,
           evmToken: info.toToken,
+        })
+      : KnownChainId.isSolanaChain(info.toChain) &&
+        KnownTokenId.isSolanaToken(info.toToken)
+      ? await getTerminatingStacksTokenContractAddressSolana(sdkContext, {
+          stacksChain: transitStacksChain,
+          solanaChain: info.toChain,
+          solanaToken: info.toToken,
         })
       : undefined) ?? bridgedToStacksTokenAddress
 
@@ -302,13 +368,13 @@ async function createBridgeOrderFromMetaImpl(
     ).then(unwrapResponse)
   } else if (swapInfo.via === "evmDexAggregator") {
     const swapFromTokenStacksAddress =
-      (await getTerminatingStacksTokenContractAddress(sdkContext, {
+      (await getTerminatingStacksTokenContractAddressEVM(sdkContext, {
         stacksChain: transitStacksChain,
         evmChain: swapInfo.evmChain,
         evmToken: swapInfo.fromEVMToken,
       })) ?? bridgedFromStacksTokenAddress
     const swapToTokenStacksAddress =
-      (await getTerminatingStacksTokenContractAddress(sdkContext, {
+      (await getTerminatingStacksTokenContractAddressEVM(sdkContext, {
         stacksChain: transitStacksChain,
         evmChain: swapInfo.evmChain,
         evmToken: swapInfo.toEVMToken,

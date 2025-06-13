@@ -7,6 +7,9 @@ import {
   getEvm2StacksFeeInfo,
   getStacks2EvmFeeInfo,
 } from "../evmUtils/peggingHelpers"
+import {
+  getStacks2SolanaFeeInfo,
+} from "../solanaUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
 import { StacksContractName } from "../stacksUtils/stxContractAddresses"
 import {
@@ -27,7 +30,9 @@ import {
   KnownRoute_FromBitcoin_ToBRC20,
   KnownRoute_FromBitcoin_ToEVM,
   KnownRoute_FromBitcoin_ToRunes,
+  KnownRoute_FromBitcoin_ToSolana,
   KnownRoute_FromBitcoin_ToStacks,
+  KnownRoute_FromBitcoin_ToTron,
   KnownRoute_ToStacks,
 } from "../utils/buildSupportedRoutes"
 import { UnsupportedBridgeRouteError } from "../utils/errors"
@@ -114,6 +119,32 @@ export const bridgeInfoFromBitcoin = async (
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isBitcoinToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeInfoFromBitcoin_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isBitcoinToken(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeInfoFromBitcoin_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
     } else {
       assertExclude(route.toChain, assertExclude.i<KnownChainId.BitcoinChain>())
       checkNever(route)
@@ -123,6 +154,8 @@ export const bridgeInfoFromBitcoin = async (
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.EVMChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
     checkNever(route)
   }
 
@@ -557,6 +590,171 @@ async function bridgeInfoFromBitcoin_toMeta(
     BigNumber.from(info.amount),
     exchangeRates,
   )
+}
+
+async function bridgeInfoFromBitcoin_toSolana(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromBitcoinInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromBitcoin_ToSolana,
+): Promise<BridgeInfoFromBitcoinOutput> {
+  const transitStacksChainId =
+    info.fromChain === KnownChainId.Bitcoin.Mainnet
+      ? KnownChainId.Stacks.Mainnet
+      : KnownChainId.Stacks.Testnet
+
+  const headAndTailStacksTokens = await getAndCheckTransitStacksTokens(
+    ctx,
+    info,
+  )
+  if (headAndTailStacksTokens == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
+  }
+
+  const { firstStepToStacksToken, lastStepFromStacksToken } =
+    headAndTailStacksTokens
+
+  let routes: (undefined | KnownRoute)[]
+  let steps: (undefined | TransferProphet)[]
+  let exchangeRates: BigNumber[]
+  if (info.swapRoute == null || info.swapRoute.via === "ALEX") {
+    const _routes = [
+      {
+        fromChain: info.fromChain,
+        fromToken: info.fromToken,
+        toChain: transitStacksChainId,
+        toToken: firstStepToStacksToken,
+      },
+      {
+        fromChain: transitStacksChainId,
+        fromToken: lastStepFromStacksToken,
+        toChain: info.toChain,
+        toToken: info.toToken,
+      },
+    ] as const satisfies KnownRoute[]
+
+    const _steps = await Promise.all([
+      getBtc2StacksFeeInfo(ctx, _routes[0], {
+        swapRoute: info.swapRoute ?? null,
+      }),
+      getStacks2SolanaFeeInfo(ctx, _routes[1], {
+        initialRoute: _routes[0],
+      }),
+    ])
+
+    routes = _routes
+    steps = _steps
+    exchangeRates = [
+      BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+    ]
+  } else if (info.swapRoute.via === "evmDexAggregator") {
+    const intermediaryInfo = await constructDexAggregatorIntermediaryInfo(
+      ctx,
+      info.swapRoute,
+      {
+        transitStacksChainId,
+        firstStepToStacksToken,
+        lastStepFromStacksToken,
+      },
+    )
+    if (intermediaryInfo == null) {
+      throw new UnsupportedBridgeRouteError(
+        info.fromChain,
+        info.toChain,
+        info.fromToken,
+        info.toToken,
+        info.swapRoute,
+      )
+    }
+
+    const btcPegInRoute = {
+      fromChain: info.fromChain,
+      fromToken: info.fromToken,
+      toChain: transitStacksChainId,
+      toToken: firstStepToStacksToken,
+    } satisfies KnownRoute
+    const solanaPegOutRoute = {
+      fromChain: transitStacksChainId,
+      fromToken: lastStepFromStacksToken,
+      toChain: info.toChain,
+      toToken: info.toToken,
+    } satisfies KnownRoute
+    const _routes = [
+      // btc peg in agg
+      btcPegInRoute,
+      ...intermediaryInfo.routes,
+      // solana peg out
+      solanaPegOutRoute,
+    ] as const satisfies KnownRoute[]
+
+    const _steps = await Promise.all([
+      getBtc2StacksFeeInfo(ctx, btcPegInRoute, {
+        swapRoute: info.swapRoute ?? null,
+      }),
+      ...intermediaryInfo.steps,
+      getStacks2SolanaFeeInfo(ctx, solanaPegOutRoute, {
+        initialRoute: last(intermediaryInfo.routes) as KnownRoute_ToStacks,
+      }),
+    ])
+
+    routes = _routes
+    steps = _steps
+    exchangeRates = [
+      BigNumber.ONE,
+      BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+      BigNumber.ONE,
+    ]
+  } else {
+    checkNever(info.swapRoute)
+    routes = []
+    steps = []
+    exchangeRates = []
+  }
+
+  const nonNullableRoutes = routes.filter(isNotNull)
+  const nonNullableSteps = steps.filter(isNotNull)
+  if (
+    nonNullableSteps == null ||
+    !hasAny(nonNullableSteps) ||
+    nonNullableSteps.length !== steps?.length ||
+    nonNullableRoutes == null ||
+    !hasAny(nonNullableRoutes) ||
+    nonNullableRoutes.length !== routes?.length ||
+    !hasAny(exchangeRates)
+  ) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  return transformToPublicTransferProphetAggregated(
+    nonNullableRoutes,
+    nonNullableSteps,
+    BigNumber.from(info.amount),
+    exchangeRates,
+  )
+}
+
+async function bridgeInfoFromBitcoin_toTron(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromBitcoinInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromBitcoin_ToTron,
+): Promise<BridgeInfoFromBitcoinOutput> {
+  throw new Error("WIP")
 }
 
 export async function constructDexAggregatorIntermediaryInfo(

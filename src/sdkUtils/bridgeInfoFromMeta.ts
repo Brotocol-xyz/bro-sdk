@@ -6,6 +6,7 @@ import {
   isSupportedBRC20Route,
   isSupportedRunesRoute,
 } from "../metaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { BigNumber } from "../utils/BigNumber"
 import {
   getAndCheckTransitStacksTokens,
@@ -19,12 +20,16 @@ import {
   KnownRoute_FromBRC20_ToBRC20,
   KnownRoute_FromBRC20_ToEVM,
   KnownRoute_FromBRC20_ToRunes,
+  KnownRoute_FromBRC20_ToSolana,
   KnownRoute_FromBRC20_ToStacks,
+  KnownRoute_FromBRC20_ToTron,
   KnownRoute_FromRunes_ToBitcoin,
   KnownRoute_FromRunes_ToBRC20,
   KnownRoute_FromRunes_ToEVM,
   KnownRoute_FromRunes_ToRunes,
+  KnownRoute_FromRunes_ToSolana,
   KnownRoute_FromRunes_ToStacks,
+  KnownRoute_FromRunes_ToTron,
   KnownRoute_ToStacks,
 } from "../utils/buildSupportedRoutes"
 import { UnsupportedBridgeRouteError } from "../utils/errors"
@@ -135,6 +140,32 @@ export const bridgeInfoFromBRC20 = async (
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isBRC20Token(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeInfoFromMeta_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain as KnownChainId.BRC20Chain,
+          fromToken: route.fromToken as KnownTokenId.BRC20Token,
+          toChain: route.toChain,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isBRC20Token(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeInfoFromMeta_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain as KnownChainId.BRC20Chain,
+          fromToken: route.fromToken as KnownTokenId.BRC20Token,
+          toChain: route.toChain,
+          toToken: route.toToken,
+        })
+      }
     } else {
       checkNever(route.toChain)
     }
@@ -143,6 +174,8 @@ export const bridgeInfoFromBRC20 = async (
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.EVMChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
     checkNever(route)
   }
 
@@ -226,6 +259,32 @@ export const bridgeInfoFromRunes = async (
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isRunesToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeInfoFromMeta_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain as KnownChainId.BRC20Chain,
+          fromToken: route.fromToken as KnownTokenId.BRC20Token,
+          toChain: route.toChain,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isRunesToken(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeInfoFromMeta_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain as KnownChainId.BRC20Chain,
+          fromToken: route.fromToken as KnownTokenId.BRC20Token,
+          toChain: route.toChain,
+          toToken: route.toToken,
+        })
+      }
     } else {
       checkNever(route.toChain)
     }
@@ -234,6 +293,8 @@ export const bridgeInfoFromRunes = async (
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.EVMChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
     checkNever(route)
   }
 
@@ -826,4 +887,168 @@ async function bridgeInfoFromMeta_toMeta(
     BigNumber.from(info.amount),
     exchangeRates,
   )
+}
+
+async function bridgeInfoFromMeta_toSolana(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromMetaInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    (KnownRoute_FromBRC20_ToSolana | KnownRoute_FromRunes_ToSolana),
+): Promise<BridgeInfoFromMetaOutput> {
+  const transitStacksChainId =
+    getChainIdNetworkType(info.fromChain) === "mainnet"
+      ? KnownChainId.Stacks.Mainnet
+      : KnownChainId.Stacks.Testnet
+
+  const headAndTailStacksTokens = await getAndCheckTransitStacksTokens(
+    ctx,
+    info,
+  )
+  if (headAndTailStacksTokens == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  const { firstStepToStacksToken, lastStepFromStacksToken } =
+    headAndTailStacksTokens
+
+  let routes: (undefined | KnownRoute)[]
+  let steps: (undefined | TransferProphet)[]
+  let exchangeRates: BigNumber[]
+  if (info.swapRoute == null || info.swapRoute.via === "ALEX") {
+    const _routes = [
+      {
+        fromChain: info.fromChain as KnownChainId.BRC20Chain,
+        fromToken: info.fromToken as KnownTokenId.BRC20Token,
+        toChain: transitStacksChainId,
+        toToken: firstStepToStacksToken,
+      },
+      {
+        fromChain: transitStacksChainId,
+        fromToken: lastStepFromStacksToken,
+        toChain: info.toChain,
+        toToken: info.toToken,
+      },
+    ] as const satisfies KnownRoute[]
+
+    const _steps = await Promise.all([
+      getMeta2StacksFeeInfo(ctx, _routes[0], {
+        swapRoute: info.swapRoute ?? null,
+      }),
+      getStacks2SolanaFeeInfo(ctx, _routes[1], {
+        initialRoute: _routes[0],
+      }),
+    ])
+
+    routes = _routes
+    steps = _steps
+    exchangeRates = [
+      BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+    ]
+  } else if (info.swapRoute.via === "evmDexAggregator") {
+    const intermediaryInfo = await constructDexAggregatorIntermediaryInfo(
+      ctx,
+      info.swapRoute,
+      {
+        transitStacksChainId,
+        firstStepToStacksToken,
+        lastStepFromStacksToken,
+      },
+    )
+    if (intermediaryInfo == null) {
+      throw new UnsupportedBridgeRouteError(
+        info.fromChain,
+        info.toChain,
+        info.fromToken,
+        info.toToken,
+        info.swapRoute,
+      )
+    }
+
+    const metaPegInRoute = {
+      fromChain: info.fromChain as KnownChainId.BRC20Chain,
+      fromToken: info.fromToken as KnownTokenId.BRC20Token,
+      toChain: transitStacksChainId,
+      toToken: firstStepToStacksToken,
+    } satisfies KnownRoute
+    const solanaPegOutRoute = {
+      fromChain: transitStacksChainId,
+      fromToken: lastStepFromStacksToken,
+      toChain: info.toChain,
+      toToken: info.toToken,
+    } satisfies KnownRoute
+    const _routes = [
+      // meta peg in agg
+      metaPegInRoute,
+      ...intermediaryInfo.routes,
+      // solana peg out
+      solanaPegOutRoute,
+    ] as const satisfies KnownRoute[]
+
+    const _steps = await Promise.all([
+      getMeta2StacksFeeInfo(ctx, metaPegInRoute, {
+        swapRoute: info.swapRoute ?? null,
+      }),
+      ...intermediaryInfo.steps,
+      getStacks2SolanaFeeInfo(ctx, solanaPegOutRoute, {
+        initialRoute: last(intermediaryInfo.routes) as KnownRoute_ToStacks,
+      }),
+    ])
+
+    routes = _routes
+    steps = _steps
+    exchangeRates = [
+      BigNumber.ONE,
+      BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+      BigNumber.ONE,
+    ]
+  } else {
+    checkNever(info.swapRoute)
+    routes = []
+    steps = []
+    exchangeRates = []
+  }
+
+  const nonNullableRoutes = routes.filter(isNotNull)
+  const nonNullableSteps = steps.filter(isNotNull)
+  if (
+    nonNullableSteps == null ||
+    !hasAny(nonNullableSteps) ||
+    nonNullableSteps.length !== steps?.length ||
+    nonNullableRoutes == null ||
+    !hasAny(nonNullableRoutes) ||
+    nonNullableRoutes.length !== routes?.length ||
+    !hasAny(exchangeRates)
+  ) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  return transformToPublicTransferProphetAggregated(
+    nonNullableRoutes,
+    nonNullableSteps,
+    BigNumber.from(info.amount),
+    exchangeRates,
+  )
+}
+
+async function bridgeInfoFromMeta_toTron(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromMetaInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    (KnownRoute_FromBRC20_ToTron | KnownRoute_FromRunes_ToTron),
+): Promise<BridgeInfoFromMetaOutput> {
+  throw new Error("WIP")
 }

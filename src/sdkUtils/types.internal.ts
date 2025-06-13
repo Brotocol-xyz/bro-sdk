@@ -3,7 +3,9 @@ import { EVMOnChainConfigByEVMChain } from "../evmUtils/apiHelpers/getEVMOnChain
 import { EVMSupportedRoute } from "../evmUtils/apiHelpers/getEVMSupportedRoutes"
 import type { BRC20SupportedRoute } from "../metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import type { RunesSupportedRoute } from "../metaUtils/apiHelpers/getRunesSupportedRoutes"
+import { SolanaSupportedRoutesAndConfig, TokenConfigAccount } from "../solanaUtils/types"
 import { StacksTokenInfo } from "../stacksUtils/apiHelpers/getAllStacksTokens"
+import { TronSupportedRoute } from "../tronUtils/types"
 import { DefinedRoute, KnownRoute } from "../utils/buildSupportedRoutes"
 import { pMemoizeImpl } from "../utils/pMemoize"
 import { GeneralCacheInterface } from "../utils/types/GeneralCacheInterface"
@@ -33,7 +35,7 @@ export interface SDKGlobalContext {
     detectedCache: SDKGlobalContextCache<"mainnet" | "testnet", KnownRoute[]>
   }
   backendAPI: {
-    runtimeEnv: "prod" | "dev"
+    runtimeEnv: "prod" | "dev" | "beta" | "next" | "preview" | "local"
   }
   stacks: {
     tokensCache?: SDKGlobalContextCache<
@@ -85,5 +87,25 @@ export interface SDKGlobalContext {
       Promise<EVMOnChainConfigByEVMChain>
     >
     viemClients: Partial<Record<KnownChainId.EVMChain, Client>>
+  }
+  tron: {
+    routesConfigCache?: SDKGlobalContextCache<
+      "mainnet" | "testnet",
+      Promise<TronSupportedRoute[]>
+    >
+  }
+  solana: {
+    routesConfigCache?: SDKGlobalContextCache<
+      "mainnet" | "testnet",
+      Promise<SolanaSupportedRoutesAndConfig>
+    >
+    feeRateCache?: SDKGlobalContextCache<
+      string,
+      Promise<undefined | TransferProphet>
+    >
+    tokenConfigCache?: SDKGlobalContextCache<
+      string,
+      Promise<TokenConfigAccount>
+    >
   }
 }

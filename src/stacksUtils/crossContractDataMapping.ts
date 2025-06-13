@@ -10,6 +10,8 @@ export type KnownChainIdWithAssignedId =
   | KnownChainId.BitcoinChain
   | KnownChainId.BRC20Chain
   | KnownChainId.RunesChain
+  | KnownChainId.TronChain
+  | KnownChainId.SolanaChain
 
 export function contractAssignedChainIdFromKnownChain(
   chain: KnownChainIdWithAssignedId,
@@ -60,6 +62,13 @@ export function contractAssignedChainIdFromKnownChain(
       return 17n
     case KnownChainId.EVM.Mezo:
       return 18n
+    case KnownChainId.Solana.Mainnet:
+      return 19n
+    case KnownChainId.Solana.Testnet:
+      return 6n // for testing
+    case KnownChainId.Tron.Mainnet:
+    case KnownChainId.Tron.Testnet:
+      return 20n
     case KnownChainId.BRC20.Mainnet:
     case KnownChainId.BRC20.Testnet:
       return 1001n
@@ -191,6 +200,19 @@ export function contractAssignedChainIdToKnownChain(
   }
   assertExclude(resPossibilities, KnownChainId.Runes.Mainnet)
   assertExclude(resPossibilities, KnownChainId.Runes.Testnet)
+
+  if (chainId === 19n) {
+    return [KnownChainId.Solana.Mainnet, KnownChainId.Solana.Testnet]
+  }
+  assertExclude(resPossibilities, KnownChainId.Solana.Mainnet)
+  assertExclude(resPossibilities, KnownChainId.Solana.Testnet)
+
+  // TBD
+  if (chainId === 999n) {
+    return [KnownChainId.Tron.Mainnet, KnownChainId.Tron.Testnet]
+  }
+  assertExclude(resPossibilities, KnownChainId.Tron.Mainnet)
+  assertExclude(resPossibilities, KnownChainId.Tron.Testnet)
 
   checkNever(resPossibilities)
   throw new UnsupportedContractAssignedChainIdError(chainId)

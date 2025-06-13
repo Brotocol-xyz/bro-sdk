@@ -1,6 +1,7 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
 import { getStacks2EvmFeeInfo } from "../evmUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { isSupportedStacksRoute } from "../stacksUtils/peggingHelpers"
 import {
   checkRouteValid,
@@ -8,6 +9,8 @@ import {
   KnownRoute_FromStacks_ToBRC20,
   KnownRoute_FromStacks_ToEVM,
   KnownRoute_FromStacks_ToRunes,
+  KnownRoute_FromStacks_ToSolana,
+  KnownRoute_FromStacks_ToTron,
 } from "../utils/buildSupportedRoutes"
 import { UnsupportedBridgeRouteError } from "../utils/errors"
 import { assertExclude, checkNever } from "../utils/typeHelpers"
@@ -89,6 +92,32 @@ export async function bridgeInfoFromStacks(
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isStacksToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeInfoFromStacks_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isStacksToken(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeInfoFromStacks_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
     } else {
       assertExclude(route.toChain, assertExclude.i<KnownChainId.StacksChain>())
       checkNever(route)
@@ -98,6 +127,8 @@ export async function bridgeInfoFromStacks(
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
     checkNever(route)
   }
 
@@ -188,4 +219,41 @@ async function bridgeInfoFromStacks_toMeta(
     ...transformToPublicTransferProphet(info, info.amount, step1),
     transferProphets: [],
   }
+}
+
+async function bridgeInfoFromStacks_toSolana(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromStacksInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromStacks_ToSolana,
+): Promise<BridgeInfoFromStacksOutput> {
+  const step1 = await getStacks2SolanaFeeInfo(ctx, info, {
+    initialRoute: null,
+  })
+  if (step1 == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  return {
+    ...transformToPublicTransferProphet(info, info.amount, step1),
+    transferProphets: [],
+  }
+}
+
+async function bridgeInfoFromStacks_toTron(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeInfoFromStacksInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromStacks_ToTron,
+): Promise<BridgeInfoFromStacksOutput> {
+  throw new Error("WIP")
 }

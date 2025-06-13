@@ -1,7 +1,7 @@
 import * as btc from "@scure/btc-signer"
 import { FungiblePostConditionWire } from "@stacks/transactions"
 import { addressToScriptPubKey } from "../bitcoinUtils/bitcoinHelpers"
-import { getTerminatingStacksTokenContractAddress } from "../evmUtils/peggingHelpers"
+import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressEVM } from "../evmUtils/peggingHelpers"
 import {
   composeTxBro,
   ContractCallOptions,
@@ -18,6 +18,8 @@ import {
   KnownRoute_FromStacks_ToBRC20,
   KnownRoute_FromStacks_ToEVM,
   KnownRoute_FromStacks_ToRunes,
+  type KnownRoute_FromStacks_ToSolana,
+  type KnownRoute_FromStacks_ToTron,
 } from "../utils/buildSupportedRoutes"
 import { UnsupportedBridgeRouteError } from "../utils/errors"
 import { decodeHex } from "../utils/hexHelpers"
@@ -25,6 +27,8 @@ import { assertExclude, checkNever } from "../utils/typeHelpers"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
 import { ChainId, SDKNumber, TokenId } from "./types"
 import { SDKGlobalContext } from "./types.internal"
+import { addressToBuffer } from "../lowlevelUnstableInfos"
+import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressSolana } from "../solanaUtils/peggingHelpers"
 
 export type BridgeFromStacksInput_ContractCallOptions = ContractCallOptions
 
@@ -108,6 +112,32 @@ export async function bridgeFromStacks(
           toToken: route.toToken,
         })
       }
+    } else if (KnownChainId.isSolanaChain(route.toChain)) {
+      if (
+        KnownTokenId.isStacksToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.toToken)
+      ) {
+        return bridgeFromStacks_toSolana(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
+    } else if (KnownChainId.isTronChain(route.toChain)) {
+      if (
+        KnownTokenId.isStacksToken(route.fromToken) &&
+        KnownTokenId.isTronToken(route.toToken)
+      ) {
+        return bridgeFromStacks_toTron(ctx, {
+          ...info,
+          fromChain: route.fromChain,
+          toChain: route.toChain,
+          fromToken: route.fromToken,
+          toToken: route.toToken,
+        })
+      }
     } else {
       assertExclude(route.toChain, assertExclude.i<KnownChainId.StacksChain>())
       checkNever(route)
@@ -117,6 +147,8 @@ export async function bridgeFromStacks(
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
     checkNever(route)
   }
 
@@ -196,7 +228,7 @@ async function bridgeFromStacks_toEVM(
   }
 
   const terminatingTokenContractAddress =
-    (await getTerminatingStacksTokenContractAddress(ctx, {
+    (await getTerminatingStacksTokenContractAddressEVM(ctx, {
       stacksChain: info.fromChain,
       evmChain: info.toChain,
       evmToken: info.toToken,
@@ -210,6 +242,103 @@ async function bridgeFromStacks_toEVM(
       "amount-in-fixed": numberToStacksContractNumber(info.amount),
       "dest-chain-id": contractAssignedChainIdFromKnownChain(info.toChain),
       "settle-address": decodeHex(info.toAddress),
+    },
+    {
+      ...contractCallInfo.executeOptions,
+      postConditions: undefined as undefined | FungiblePostConditionWire[],
+    },
+  )
+
+  return await info.sendTransaction(options)
+}
+
+async function bridgeFromStacks_toSolana(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeFromStacksInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromStacks_ToSolana,
+): Promise<BridgeFromStacksOutput> {
+  const contractCallInfo = getStacksContractCallInfo(
+    info.fromChain,
+    StacksContractName.EVMPegOutEndpoint,
+  )
+  const fromTokenContractInfo = await getStacksTokenContractInfo(
+    ctx,
+    info.fromChain,
+    info.fromToken,
+  )
+  if (contractCallInfo == null || fromTokenContractInfo == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  const terminatingTokenContractAddress =
+    (await getTerminatingStacksTokenContractAddressSolana(ctx, {
+      stacksChain: info.fromChain,
+      solanaToken: info.toToken,
+      solanaChain: info.toChain,
+    })) ?? fromTokenContractInfo
+
+  const options = composeTxBro(
+    contractCallInfo.contractName,
+    "transfer-to-unwrap",
+    {
+      "token-trait": `${terminatingTokenContractAddress.deployerAddress}.${terminatingTokenContractAddress.contractName}`,
+      "amount-in-fixed": numberToStacksContractNumber(info.amount),
+      "dest-chain-id": contractAssignedChainIdFromKnownChain(info.toChain),
+      "settle-address": addressToBuffer(info.toChain, info.toAddress),
+    },
+    {
+      ...contractCallInfo.executeOptions,
+      postConditions: undefined as undefined | FungiblePostConditionWire[],
+    },
+  )
+
+  return await info.sendTransaction(options)
+}
+
+async function bridgeFromStacks_toTron(
+  ctx: SDKGlobalContext,
+  info: Omit<
+    BridgeFromStacksInput,
+    "fromChain" | "toChain" | "fromToken" | "toToken"
+  > &
+    KnownRoute_FromStacks_ToTron,
+): Promise<BridgeFromStacksOutput> {
+  const contractCallInfo = getStacksContractCallInfo(
+    info.fromChain,
+    StacksContractName.EVMPegOutEndpoint,
+  )
+  const fromTokenContractInfo = await getStacksTokenContractInfo(
+    ctx,
+    info.fromChain,
+    info.fromToken,
+  )
+  if (contractCallInfo == null || fromTokenContractInfo == null) {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+    )
+  }
+
+  const terminatingTokenContractAddress = fromTokenContractInfo
+
+  const options = composeTxBro(
+    contractCallInfo.contractName,
+    "transfer-to-unwrap",
+    {
+      "token-trait": `${terminatingTokenContractAddress.deployerAddress}.${terminatingTokenContractAddress.contractName}`,
+      "amount-in-fixed": numberToStacksContractNumber(info.amount),
+      "dest-chain-id": contractAssignedChainIdFromKnownChain(info.toChain),
+      "settle-address": addressToBuffer(info.toChain, info.toAddress),
     },
     {
       ...contractCallInfo.executeOptions,

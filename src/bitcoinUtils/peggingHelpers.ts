@@ -38,6 +38,8 @@ import {
   withGlobalContextCache,
 } from "../sdkUtils/types.internal"
 import { getBTCPegInAddress } from "./btcAddresses"
+import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
+import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
 
 export const getBtc2StacksFeeInfo = async (
   ctx: SDKGlobalContext,
@@ -371,6 +373,13 @@ export const isSupportedBitcoinRoute: IsSupportedFn = async (ctx, route) => {
     )
   }
 
+  if (KnownChainId.isTronChain(toChain)) {
+    if (!KnownTokenId.isTronToken(toToken)) return false
+
+    // TODO: implement tron support
+    return false
+  }
+
   // btc -> btc
   if (KnownChainId.isBitcoinChain(toChain)) {
     return false
@@ -403,6 +412,38 @@ export const isSupportedBitcoinRoute: IsSupportedFn = async (ctx, route) => {
       toRoutes.some(
         route =>
           route.runesToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
+      )
+    )
+  }
+
+  // btc -> tron
+  if (KnownChainId.isTronChain(toChain)) {
+    if (!KnownTokenId.isTronToken(toToken)) return false
+
+    const toRoutes = await getTronSupportedRoutes(ctx, toChain)
+
+    return (
+      firstStepToStacksToken === KnownTokenId.Stacks.aBTC &&
+      toRoutes.some(
+        route =>
+          route.tronToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
+      )
+    )
+  }
+
+  // btc -> solana
+  if (KnownChainId.isSolanaChain(toChain)) {
+    if (!KnownTokenId.isSolanaToken(toToken)) return false
+
+    const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
+
+    return (
+      firstStepToStacksToken === KnownTokenId.Stacks.aBTC &&
+      toRoutes.some(
+        route =>
+          route.solanaToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
       )
     )

@@ -121,6 +121,35 @@ import { SDKGlobalContext } from "./sdkUtils/types.internal"
 import { DumpableCache, getCacheInside } from "./utils/DumpableCache"
 import { isNotNull } from "./utils/typeHelpers"
 import { SwapRoute } from "./utils/SwapRouteHelpers"
+import {
+  tronTokenToCorrespondingStacksToken,
+  tronTokenFromCorrespondingStacksToken,
+} from "./tronUtils/peggingHelpers"
+import {
+  solanaTokenToCorrespondingStacksToken,
+  solanaTokenFromCorrespondingStacksToken,
+} from "./solanaUtils/peggingHelpers"
+import { isSupportedTronRoute } from "./tronUtils/peggingHelpers"
+import { isSupportedSolanaRoute } from "./solanaUtils/peggingHelpers"
+import { getSolanaSupportedRoutes } from "./solanaUtils/getSolanaSupportedRoutes"
+import { SolanaSupportedRoute } from "./solanaUtils/types"
+import { getTronSupportedRoutes } from "./tronUtils/getTronSupportedRoutes"
+import { TronSupportedRoute } from "./tronUtils/types"
+import {
+  BridgeFromSolanaInput,
+  BridgeFromSolanaOutput,
+  bridgeFromSolana,
+} from "./sdkUtils/bridgeFromSolana"
+import {
+  BridgeInfoFromSolanaInput,
+  BridgeInfoFromSolanaOutput,
+  bridgeInfoFromSolana,
+} from "./sdkUtils/bridgeInfoFromSolana"
+
+export {
+  BridgeFromSolanaInput,
+  BridgeFromSolanaOutput,
+} from "./sdkUtils/bridgeFromSolana"
 
 export {
   GetSupportedRoutesFn_Conditions,
@@ -293,6 +322,12 @@ export class BroSDK {
           ...options.evm?.viemClients,
         },
       },
+      tron: {
+        routesConfigCache: new Map(),
+      },
+      solana: {
+        routesConfigCache: new Map(),
+      },
     }
   }
 
@@ -405,6 +440,8 @@ export class BroSDK {
       isSupportedBitcoinRoute(this.sdkContext, route),
       isSupportedBRC20Route(this.sdkContext, route),
       isSupportedRunesRoute(this.sdkContext, route),
+      isSupportedTronRoute(this.sdkContext, route),
+      isSupportedSolanaRoute(this.sdkContext, route),
     ])
 
     return checkingResult.some(r => r)
@@ -1080,9 +1117,9 @@ export class BroSDK {
    * - `toChain: ChainId` - The ID of the destination blockchain (Stacks, EVM, Bitcoin or BRC20).
    * - `fromToken: TokenId` - The token being transferred from the Runes chain.
    * - `toToken: TokenId` - The token expected on the destination chain.
-   * - `fromAddress: string` - The sender’s address on the Runes chain.
+   * - `fromAddress: string` - The sender's address on the Runes chain.
    * - `fromAddressScriptPubKey: Uint8Array` - The script public key for `fromAddress`.
-   * - `toAddress: string` - The recipient’s address on the destination blockchain.
+   * - `toAddress: string` - The recipient's address on the destination blockchain.
    * - `toAddressScriptPubKey?: Uint8Array` - Required when the destination chain is Bitcoin or BRC20.
    * - `amount: SDKNumber` - The amount of tokens to transfer.
    * - `inputRuneUTXOs: RunesUTXOSpendable[]` - UTXOs containing the Runes to be spent.
@@ -1146,6 +1183,232 @@ export class BroSDK {
     id: RuneIdCombined,
   ): Promise<undefined | KnownTokenId.RunesToken> {
     return runesIdToRunesToken(this.sdkContext, chain, id)
+  }
+
+  /**
+   * This function retrieves the Stacks token ID corresponding to a given Tron token on a specific Tron chain.
+   * It queries the list of supported Tron tokens for the specified chain and returns the corresponding Stacks token.
+   *
+   * @param chain - The Tron chain to search in (must be a Tron chain like `tron-mainnet` or `tron-testnet`).
+   * @param token - The Tron token ID to look up.
+   *
+   * @returns A promise that resolves with the corresponding Stacks token ID if found,
+   * or `undefined` if the token is not supported or the chain is invalid.
+   */
+  async tronTokenToStacksToken(
+    chain: ChainId,
+    token: KnownTokenId.TronToken,
+  ): Promise<undefined | KnownTokenId.StacksToken> {
+    if (!KnownChainId.isTronChain(chain)) return
+    return tronTokenToCorrespondingStacksToken(this.sdkContext, chain, token)
+  }
+
+  /**
+   * This function retrieves all Tron tokens corresponding to a given Stacks token on a specific Tron chain.
+   * It queries the list of supported Tron tokens for the specified chain and returns all matching Tron tokens.
+   *
+   * @param chain - The Tron chain to search in (must be a Tron chain like `tron-mainnet` or `tron-testnet`).
+   * @param token - The Stacks token ID to look up.
+   *
+   * @returns A promise that resolves with an array of corresponding Tron token IDs if found,
+   * or an empty array if no matches are found or the chain is invalid.
+   */
+  async stacksTokenToTronTokens(
+    chain: ChainId,
+    token: KnownTokenId.StacksToken,
+  ): Promise<KnownTokenId.TronToken[]> {
+    if (!KnownChainId.isTronChain(chain)) return []
+    return tronTokenFromCorrespondingStacksToken(this.sdkContext, chain, token)
+  }
+
+  /**
+   * This function retrieves the Stacks token ID corresponding to a given Solana token on a specific Solana chain.
+   * It queries the list of supported Solana tokens for the specified chain and returns the corresponding Stacks token.
+   *
+   * @param chain - The Solana chain to search in (must be a Solana chain like `solana-mainnet` or `solana-testnet`).
+   * @param token - The Solana token ID to look up.
+   *
+   * @returns A promise that resolves with the corresponding Stacks token ID if found,
+   * or `undefined` if the token is not supported or the chain is invalid.
+   */
+  async solanaTokenToStacksToken(
+    chain: ChainId,
+    token: KnownTokenId.SolanaToken,
+  ): Promise<undefined | KnownTokenId.StacksToken> {
+    if (!KnownChainId.isSolanaChain(chain)) return
+    return solanaTokenToCorrespondingStacksToken(this.sdkContext, chain, token)
+  }
+
+  /**
+   * This function retrieves all Solana tokens corresponding to a given Stacks token on a specific Solana chain.
+   * It queries the list of supported Solana tokens for the specified chain and returns all matching Solana tokens.
+   *
+   * @param chain - The Solana chain to search in (must be a Solana chain like `solana-mainnet` or `solana-testnet`).
+   * @param token - The Stacks token ID to look up.
+   *
+   * @returns A promise that resolves with an array of corresponding Solana token IDs if found,
+   * or an empty array if no matches are found or the chain is invalid.
+   */
+  async stacksTokenToSolanaTokens(
+    chain: ChainId,
+    token: KnownTokenId.StacksToken,
+  ): Promise<KnownTokenId.SolanaToken[]> {
+    if (!KnownChainId.isSolanaChain(chain)) return []
+    return solanaTokenFromCorrespondingStacksToken(this.sdkContext, chain, token)
+  }
+
+  /**
+   * Retrieves the `KnownTokenId.SolanaToken` associated with a given Solana token address
+   * on a specific Solana blockchain.
+   * This function queries the list of supported Solana tokens for the specified chain,
+   * and returns the known Solana token ID mapped to the provided token address.
+   *
+   * Always use this function to retrieve a `SolanaToken` ID at runtime.
+   * Do not hardcode or cache token IDs, as supported tokens may change dynamically.
+   *
+   * @param chain - The Solana blockchain (`solana-mainnet` or `solana-testnet`) to search in.
+   * @param address - The Solana token address to look up.
+   *
+   * @returns A promise that resolves with the corresponding `KnownTokenId.SolanaToken`,
+   * or `undefined` if the address is not recognized or the chain is not supported.
+   */
+  async solanaTokenAddressToSolanaToken(
+    chain: ChainId,
+    address: string,
+  ): Promise<undefined | KnownTokenId.SolanaToken> {
+    if (!KnownChainId.isSolanaChain(chain)) return
+    const routes = await getSolanaSupportedRoutes(this.sdkContext, chain)
+    return routes.find((r: SolanaSupportedRoute) => r.solanaTokenAddress === address)?.solanaToken
+  }
+
+  /**
+   * Retrieves the `KnownTokenId.TronToken` associated with a given Tron token address
+   * on a specific Tron blockchain.
+   * This function queries the list of supported Tron tokens for the specified chain,
+   * and returns the known Tron token ID mapped to the provided token address.
+   *
+   * Always use this function to retrieve a `TronToken` ID at runtime.
+   * Do not hardcode or cache token IDs, as supported tokens may change dynamically.
+   *
+   * @param chain - The Tron blockchain (`tron-mainnet` or `tron-testnet`) to search in.
+   * @param address - The Tron token address to look up.
+   *
+   * @returns A promise that resolves with the corresponding `KnownTokenId.TronToken`,
+   * or `undefined` if the address is not recognized or the chain is not supported.
+   */
+  async tronTokenAddressToTronToken(
+    chain: ChainId,
+    address: string,
+  ): Promise<undefined | KnownTokenId.TronToken> {
+    if (!KnownChainId.isTronChain(chain)) return
+    const routes = await getTronSupportedRoutes(this.sdkContext, chain)
+    return routes.find((r: TronSupportedRoute) => r.tronTokenAddress === address)?.tronToken
+  }
+
+  /**
+   * Retrieves the Solana token address associated with a given `KnownTokenId.SolanaToken`
+   * on a specific Solana blockchain.
+   * This function queries the list of supported Solana tokens for the specified chain,
+   * and returns the token address mapped to the provided Solana token ID.
+   *
+   * Always use this function to retrieve a Solana token address at runtime.
+   * Do not hardcode or cache token addresses, as supported tokens may change dynamically.
+   *
+   * @param chain - The Solana blockchain (`solana-mainnet` or `solana-testnet`) to search in.
+   * @param token - The Solana token ID to look up.
+   *
+   * @returns A promise that resolves with the corresponding Solana token address,
+   * or `undefined` if the token is not recognized or the chain is not supported.
+   */
+  async solanaTokenToSolanaTokenAddress(
+    chain: ChainId,
+    token: KnownTokenId.SolanaToken,
+  ): Promise<undefined | string> {
+    if (!KnownChainId.isSolanaChain(chain)) return
+    const routes = await getSolanaSupportedRoutes(this.sdkContext, chain)
+    return routes.find((r: SolanaSupportedRoute) => r.solanaToken === token)?.solanaTokenAddress
+  }
+
+  /**
+   * Retrieves the Tron token address associated with a given `KnownTokenId.TronToken`
+   * on a specific Tron blockchain.
+   * This function queries the list of supported Tron tokens for the specified chain,
+   * and returns the token address mapped to the provided Tron token ID.
+   *
+   * Always use this function to retrieve a Tron token address at runtime.
+   * Do not hardcode or cache token addresses, as supported tokens may change dynamically.
+   *
+   * @param chain - The Tron blockchain (`tron-mainnet` or `tron-testnet`) to search in.
+   * @param token - The Tron token ID to look up.
+   *
+   * @returns A promise that resolves with the corresponding Tron token address,
+   * or `undefined` if the token is not recognized or the chain is not supported.
+   */
+  async tronTokenToTronTokenAddress(
+    chain: ChainId,
+    token: KnownTokenId.TronToken,
+  ): Promise<undefined | string> {
+    if (!KnownChainId.isTronChain(chain)) return
+    const routes = await getTronSupportedRoutes(this.sdkContext, chain)
+    return routes.find((r: TronSupportedRoute) => r.tronToken === token)?.tronTokenAddress
+  }
+
+  /**
+   * This function provides detailed information about token transfers from the Solana network to other supported
+   * blockchain networks, including Stacks, EVM-compatible chains, Bitcoin, BRC-20, Runes, and other Solana chains.
+   * It verifies the validity of the transfer route and retrieves bridge information based on the destination chain and tokens.
+   *
+   * @param input - An object containing the input parameters required for retrieving bridge information:
+   * - `fromChain: ChainId` - The ID of the source blockchain (Solana in this case).
+   * - `toChain: ChainId` - The ID of the destination blockchain (Stacks, EVM, Bitcoin, etc.).
+   * - `fromToken: TokenId` - The token being transferred from the Solana network.
+   * - `toToken: TokenId` - The token expected on the destination chain.
+   * - `amount: SDKNumber` - The amount of tokens involved in the transfer.
+   *
+   * @returns A promise that resolves with an object containing detailed information about the token transfer, including:
+   * - `fromChain: KnownChainId.KnownChain` - The source blockchain.
+   * - `fromToken: KnownTokenId.KnownToken` - The token being transferred from the Solana network.
+   * - `toChain: KnownChainId.KnownChain` - The destination blockchain.
+   * - `toToken: KnownTokenId.KnownToken` - The token expected on the destination chain.
+   * - `fromAmount: SDKNumber` - The amount of tokens being transferred.
+   * - `toAmount: SDKNumber` - The amount of tokens expected on the destination chain after the transfer.
+   * - `feeAmount: SDKNumber` - The fee amount deducted during the transfer.
+   *
+   * @throws UnsupportedBridgeRouteError - If the provided route between the source and destination
+   * chains or tokens is unsupported.
+   */
+  bridgeInfoFromSolana(
+    input: BridgeInfoFromSolanaInput,
+  ): Promise<BridgeInfoFromSolanaOutput> {
+    return bridgeInfoFromSolana(this.sdkContext, input)
+  }
+
+  /**
+   * This function facilitates the transfer of tokens from the Solana network to other supported
+   * blockchain networks, including Stacks, EVM-compatible chains, Bitcoin, BRC-20, Runes, and other Solana chains.
+   * It validates the route and calls the appropriate bridging function based on the destination chain and tokens involved.
+   *
+   * @param input - An object containing the input parameters required for the bridging operation:
+   * - `fromChain: ChainId` - The ID of the source blockchain (Solana in this case).
+   * - `toChain: ChainId` - The ID of the destination blockchain (Stacks, EVM, Bitcoin, etc.).
+   * - `fromToken: TokenId` - The token being transferred from the Solana network.
+   * - `toToken: TokenId` - The token expected on the destination chain.
+   * - `fromAddress: string` - The sender's address on the Solana network.
+   * - `toAddress: string` - The recipient's address on the destination blockchain.
+   * - `toAddressScriptPubKey?: Uint8Array` - Required when the destination is a Bitcoin-based chain.
+   * - `amount: SDKNumber` - The amount of tokens to transfer.
+   * - `sendTransaction` - Function to send the transaction on the Solana network.
+   *
+   * @returns A promise that resolves with the transaction hash (`txHash`) of the bridging operation.
+   *
+   * @throws UnsupportedBridgeRouteError - If the provided route between the source and destination
+   * chains or tokens is unsupported.
+   * @throws InvalidMethodParametersError - If required parameters are missing or invalid.
+   */
+  bridgeFromSolana(
+    input: BridgeFromSolanaInput,
+  ): Promise<BridgeFromSolanaOutput> {
+    return bridgeFromSolana(this.sdkContext, input)
   }
 }
 

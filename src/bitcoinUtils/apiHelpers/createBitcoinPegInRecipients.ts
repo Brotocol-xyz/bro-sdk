@@ -30,12 +30,16 @@ export async function createBitcoinPegInRecipients(
       | KnownChainId.BitcoinChain
       | KnownChainId.BRC20Chain
       | KnownChainId.RunesChain
+      | KnownChainId.SolanaChain
+      | KnownChainId.TronChain
     toToken:
       | KnownTokenId.StacksToken
       | KnownTokenId.EVMToken
       | KnownTokenId.BitcoinToken
       | KnownTokenId.BRC20Token
       | KnownTokenId.RunesToken
+      | KnownTokenId.SolanaToken
+      | KnownTokenId.TronToken
     fromAddress: {
       address: string
       scriptPubKey: Uint8Array
