@@ -1,5 +1,6 @@
 export * from "./BroSDK"
 export * from "./utils/errors"
+export * from "./bitcoinUtils/errors"
 export {
   ChainId,
   TokenId,
@@ -24,6 +25,9 @@ export {
   SwapRouteViaEVMDexAggregator,
   SwapRouteViaEVMDexAggregator_WithMinimumAmountsToReceive_Public as SwapRouteViaEVMDexAggregator_WithMinimumAmountsOut,
   SwapRouteViaEVMDexAggregator_WithExchangeRate_Public as SwapRouteViaEVMDexAggregator_WithExchangeRate,
+  SwapRouteViaInstantSwap,
+  SwapRouteViaInstantSwap_WithMinimumAmountsToReceive_Public as SwapRouteViaInstantSwap_WithMinimumAmountsOut,
+  SwapRouteViaInstantSwap_WithExchangeRate_Public as SwapRouteViaInstantSwap_WithExchangeRate,
 } from "./utils/SwapRouteHelpers"
 export { TimeLockedAsset } from "./sdkUtils/timelockFromEVM"
 export {

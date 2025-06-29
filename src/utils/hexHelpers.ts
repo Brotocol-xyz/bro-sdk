@@ -55,6 +55,6 @@ const hexes = Array.from({ length: 256 }, (_v, i) =>
   i.toString(16).padStart(2, "0"),
 )
 
-export function encodeZeroPrefixedHex(value: Uint8Array): string {
+export function encodeZeroPrefixedHex(value: Uint8Array): `0x${string}` {
   return `0x${encodeHex(value)}`
 }

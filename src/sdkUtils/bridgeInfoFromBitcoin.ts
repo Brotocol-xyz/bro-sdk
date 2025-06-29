@@ -1,14 +1,13 @@
 import {
   getBtc2StacksFeeInfo,
+  getInstantSwapFeeInfo,
   isSupportedBitcoinRoute,
 } from "../bitcoinUtils/peggingHelpers"
 import {
   getEvm2StacksFeeInfo,
   getStacks2EvmFeeInfo,
 } from "../evmUtils/peggingHelpers"
-import {
-  getStacks2SolanaFeeInfo,
-} from "../solanaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
 import {
   executeReadonlyCallBro,
@@ -56,6 +55,7 @@ export interface BridgeInfoFromBitcoinInput {
   swapRoute?: SwapRoute_WithExchangeRate_Public
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BridgeInfoFromBitcoinOutput
   extends PublicTransferProphetAggregated {}
 
@@ -270,6 +270,16 @@ async function bridgeInfoFromBitcoin_toStacks(
     )
   }
 
+  if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
+  }
+
   checkNever(info.swapRoute)
   throw new UnsupportedBridgeRouteError(
     info.fromChain,
@@ -401,6 +411,14 @@ async function bridgeInfoFromBitcoin_toEVM(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -557,6 +575,38 @@ async function bridgeInfoFromBitcoin_toMeta(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    if (KnownChainId.isBRC20Chain(info.toChain)) {
+      throw new UnsupportedBridgeRouteError(
+        info.fromChain,
+        info.toChain,
+        info.fromToken,
+        info.toToken,
+        info.swapRoute,
+      )
+    } else if (KnownChainId.isRunesChain(info.toChain)) {
+      const _routes = [
+        {
+          fromChain: info.fromChain,
+          fromToken: info.fromToken,
+          toChain: info.toChain,
+          toToken: info.toToken as KnownTokenId.RunesToken,
+        },
+      ] as const satisfies KnownRoute[]
+
+      const _steps = await Promise.all([getInstantSwapFeeInfo(ctx, _routes[0])])
+
+      routes = _routes
+      steps = _steps
+      exchangeRates = [
+        BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+      ]
+    } else {
+      checkNever(info.toChain)
+      routes = []
+      steps = []
+      exchangeRates = []
+    }
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -711,6 +761,14 @@ async function bridgeInfoFromBitcoin_toSolana(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -881,6 +939,7 @@ export async function bridgeInfoFromBitcoin_toLaunchpad(
         minimumAmount: resp.minFeeAmount,
       },
     ],
+    reserveAmount: null,
     minBridgeAmount: BigNumber.isZero(resp.minFeeAmount)
       ? null
       : resp.minFeeAmount,

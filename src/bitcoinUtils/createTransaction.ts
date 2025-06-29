@@ -7,8 +7,12 @@ export interface Recipient {
   satsAmount: bigint
 }
 
+export type InputUTXO = UTXOSpendable & {
+  sighashType?: btc.SigHash
+}
+
 export function createTransaction(
-  inputUTXOs: Array<UTXOSpendable>,
+  inputUTXOs: Array<InputUTXO>,
   recipients: Array<Recipient>,
   opReturnScripts: Uint8Array[],
   options?: {
@@ -34,6 +38,7 @@ export function createTransaction(
       tapInternalKey:
         "tapInternalKey" in utxo ? utxo.tapInternalKey : undefined,
       redeemScript: "redeemScript" in utxo ? utxo.redeemScript : undefined,
+      sighashType: "sighashType" in utxo ? utxo.sighashType : undefined,
       // Enable RBF
       sequence: options?.enableRBF ? btc.DEFAULT_SEQUENCE - 2 : undefined,
     })

@@ -2,6 +2,7 @@ import { NETWORK, p2tr, TEST_NETWORK } from "@scure/btc-signer"
 import { checkNever } from "../utils/typeHelpers"
 import { KnownChainId } from "../utils/types/knownIds"
 import { addressToScriptPubKey } from "./bitcoinHelpers"
+import { SwapRoute } from "../utils/SwapRouteHelpers"
 
 export interface BitcoinAddress {
   address: string
@@ -52,9 +53,17 @@ export const getBitcoinHardLinkageAddress = (
     | KnownChainId.RunesChain,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   toChain: KnownChainId.KnownChain,
+  swapRoute: undefined | Pick<SwapRoute, "via">,
 ): undefined | BitcoinAddress => {
   const pubKey =
     "1ab1c25de20e4f186a405abb7430e05439269c53d99938741961ee9db83ee58d"
+
+  if (
+    swapRoute?.via === "evmDexAggregator" ||
+    swapRoute?.via === "instantSwap"
+  ) {
+    return undefined
+  }
 
   let bitcoinNetwork: undefined | typeof NETWORK | typeof TEST_NETWORK
   switch (fromChain) {

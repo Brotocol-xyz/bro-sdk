@@ -149,10 +149,12 @@ export {
 } from "./utils/buildSupportedRoutes"
 export {
   BridgeFromBitcoinInput,
-  BridgeFromBitcoinInput_signPsbtFn,
-  BridgeFromBitcoinInput_reselectSpendableUTXOs,
   BridgeFromBitcoinOutput,
 } from "./sdkUtils/bridgeFromBitcoin"
+export {
+  BridgeFromBitcoinInput_signPsbtFn,
+  BridgeFromBitcoinInput_reselectSpendableUTXOs,
+} from "./bitcoinUtils/types"
 export {
   BridgeFromBRC20Input,
   BridgeFromBRC20Input_signPsbtFn,
@@ -165,11 +167,13 @@ export {
 } from "./sdkUtils/bridgeFromEVM"
 export {
   BridgeFromRunesInput,
+  BridgeFromRunesOutput,
+} from "./sdkUtils/bridgeFromRunes"
+export {
   BridgeFromRunesInput_signPsbtFn,
   BridgeFromRunesInput_reselectSpendableNetworkFeeUTXOs,
-  BridgeFromRunesOutput,
   RunesUTXOSpendable,
-} from "./sdkUtils/bridgeFromRunes"
+} from "./metaUtils/types"
 export {
   BridgeFromStacksInput,
   BridgeFromStacksInput_ContractCallOptions,

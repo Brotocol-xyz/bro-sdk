@@ -40,6 +40,7 @@ export interface BridgeInfoFromSolanaInput {
   amount: SDKNumber
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BridgeInfoFromSolanaOutput
   extends PublicTransferProphetAggregated {}
 
@@ -456,4 +457,4 @@ async function bridgeInfoFromSolana_toTron(
     KnownRoute_FromSolana_ToTron,
 ): Promise<BridgeInfoFromSolanaOutput> {
   throw new Error("WIP")
-} 
+}

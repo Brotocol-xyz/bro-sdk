@@ -1,5 +1,6 @@
 import {
   getALEXSwapParameters_FromBitcoin,
+  getInstantSwapParameters_FromBitcoin,
   getPossibleEVMDexAggregatorSwapParameters_FromBitcoin,
 } from "./bitcoinUtils/swapHelpers"
 import { BroSDK } from "./BroSDK"
@@ -7,6 +8,7 @@ import { getALEXSwapParameters_FromEVM } from "./evmUtils/swapHelpers"
 import { getSDKContext } from "./lowlevelUnstableInfos"
 import {
   getALEXSwapParameters_FromMeta,
+  getInstantSwapParameters_FromMeta,
   getPossibleEVMDexAggregatorSwapParameters_FromMeta,
 } from "./metaUtils/swapHelpers"
 import { SDKNumber, toSDKNumberOrUndefined } from "./sdkUtils/types"
@@ -14,14 +16,67 @@ import { getALEXSwapParameters_FromSolana } from "./solanaUtils/swapHelpers"
 import { BigNumber } from "./utils/BigNumber"
 import { KnownRoute } from "./utils/buildSupportedRoutes"
 import { ALEXSwapParameters as _ALEXSwapParameters } from "./utils/swapHelpers/alexSwapParametersHelpers"
-import { EVMDexAggregatorSwapParameters as _EVMDexAggregatorSwapParameters } from "./utils/swapHelpers/evmDexAggregatorSwapParametersHelpers"
+import {
+  EVMDexAggregatorSwapParameters as _EVMDexAggregatorSwapParameters,
+  GetPossibleEVMDexAggregatorSwapParametersImplOptions,
+} from "./utils/swapHelpers/evmDexAggregatorSwapParametersHelpers"
 import { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
 import {
   DexAggregatorRoute as _DexAggregatorRoute,
   getDexAggregatorRoutes as _getDexAggregatorRoutes,
 } from "./utils/swapHelpers/getDexAggregatorRoutes"
+import { InstantSwapParameters as _InstantSwapParameters } from "./utils/swapHelpers/instantSwapParametersHelpers"
 import { checkNever } from "./utils/typeHelpers"
 import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
+
+export {
+  fetchIceScreamSwapPossibleRoutesFactory,
+  FetchIceScreamSwapPossibleRoutesFailedError,
+} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchIceScreamSwapPossibleRoutes"
+export {
+  fetchKyberSwapPossibleRoutesFactory,
+  FetchKyberSwapPossibleRoutesFailedError,
+} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchKyberSwapPossibleRoutes"
+export {
+  fetchMatchaPossibleRoutesFactory,
+  FetchMatchaPossibleRoutesFailedError,
+} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchMatchaPossibleRoutes"
+export { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
+
+export interface DexAggregatorRoute
+  extends Omit<_DexAggregatorRoute, "fromAmount" | "toAmount"> {
+  fromAmount: SDKNumber
+  toAmount: SDKNumber
+}
+
+export function getDexAggregatorRoutes(
+  sdk: BroSDK,
+  info: {
+    routeFetcher: FetchRoutesImpl
+    routes: {
+      evmChain: KnownChainId.EVMChain
+      fromToken: KnownTokenId.EVMToken
+      toToken: KnownTokenId.EVMToken
+      amount: SDKNumber
+    }[]
+  },
+): Promise<DexAggregatorRoute[]> {
+  return _getDexAggregatorRoutes(getSDKContext(sdk), {
+    routeFetcher: info.routeFetcher,
+    routes: info.routes.map(r => ({
+      evmChain: r.evmChain,
+      fromToken: r.fromToken,
+      toToken: r.toToken,
+      amount: BigNumber.from(r.amount),
+    })),
+  }).then(res =>
+    res.map(r => ({
+      ...r,
+      fromAmount: toSDKNumberOrUndefined(r.fromAmount),
+      toAmount: toSDKNumberOrUndefined(r.toAmount),
+    })),
+  )
+}
 
 export interface ALEXSwapParameters
   extends Omit<_ALEXSwapParameters, "fromAmount"> {
@@ -126,11 +181,13 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
   options: {
     ignoreTransferProphetPaused?: boolean
     skipTransferProphetFees?: boolean
+    logLevel?: GetPossibleEVMDexAggregatorSwapParametersImplOptions["logLevel"]
   } = {},
 ): Promise<EVMDexAggregatorSwapParameters[]> {
   const {
     ignoreTransferProphetPaused = false,
     skipTransferProphetFees = false,
+    logLevel = "info",
   } = options
 
   if (KnownChainId.isStacksChain(info.fromChain)) {
@@ -156,6 +213,7 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
       {
         ignoreTransferProphetPaused,
         skipTransferProphetFees,
+        logLevel,
       },
     )
     if (res == null) return []
@@ -183,6 +241,7 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
       {
         ignoreTransferProphetPaused,
         skipTransferProphetFees,
+        logLevel,
       },
     )
     if (res == null) return []
@@ -210,6 +269,7 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
       {
         ignoreTransferProphetPaused,
         skipTransferProphetFees,
+        logLevel,
       },
     )
     if (res == null) return []
@@ -236,53 +296,62 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
   return []
 }
 
-export {
-  fetchIceScreamSwapPossibleRoutesFactory,
-  FetchIceScreamSwapPossibleRoutesFailedError
-} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchIceScreamSwapPossibleRoutes"
-export {
-  fetchKyberSwapPossibleRoutesFactory,
-  FetchKyberSwapPossibleRoutesFailedError
-} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchKyberSwapPossibleRoutes"
-export {
-  fetchMatchaPossibleRoutesFactory,
-  FetchMatchaPossibleRoutesFailedError
-} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchMatchaPossibleRoutes"
-export { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
-export interface DexAggregatorRoute
-  extends Omit<_DexAggregatorRoute, "fromAmount" | "toAmount" | "slippage"> {
+export interface InstantSwapParameters
+  extends Omit<_InstantSwapParameters, "fromAmount"> {
   fromAmount: SDKNumber
-  toAmount: SDKNumber
-  slippage: SDKNumber
 }
-export function getDexAggregatorRoutes(
+/**
+ * This function retrieves the necessary parameters for performing an ALEX swap.
+ * It provides the required details to proceed with an ALEX swap, such as the
+ * tokens involved, and the amount to be swapped.
+ *
+ * @param sdk - The BroSDK instance
+ * @param info - The entire bridging route
+ */
+export async function getInstantSwapParameters(
   sdk: BroSDK,
-  info: {
-    routeFetcher: FetchRoutesImpl
-    routes: {
-      evmChain: KnownChainId.EVMChain
-      fromToken: KnownTokenId.EVMToken
-      toToken: KnownTokenId.EVMToken
-      amount: SDKNumber
-      slippage: SDKNumber
-    }[]
+  info: KnownRoute & {
+    amount: SDKNumber
   },
-): Promise<DexAggregatorRoute[]> {
-  return _getDexAggregatorRoutes(getSDKContext(sdk), {
-    routeFetcher: info.routeFetcher,
-    routes: info.routes.map(r => ({
-      evmChain: r.evmChain,
-      fromToken: r.fromToken,
-      toToken: r.toToken,
-      amount: BigNumber.from(r.amount),
-      slippage: BigNumber.from(r.slippage),
-    })),
-  }).then(res =>
-    res.map(r => ({
-      ...r,
-      fromAmount: toSDKNumberOrUndefined(r.fromAmount),
-      toAmount: toSDKNumberOrUndefined(r.toAmount),
-      slippage: toSDKNumberOrUndefined(r.slippage),
-    })),
-  )
+): Promise<undefined | InstantSwapParameters> {
+  let params: undefined | _InstantSwapParameters
+
+  if (KnownChainId.isStacksChain(info.fromChain)) {
+    return
+  } else if (KnownChainId.isEVMChain(info.fromChain)) {
+    return
+  } else if (KnownChainId.isBitcoinChain(info.fromChain)) {
+    if (!KnownTokenId.isBitcoinToken(info.fromToken)) return
+    params = await getInstantSwapParameters_FromBitcoin(getSDKContext(sdk), {
+      fromChain: info.fromChain,
+      fromToken: info.fromToken,
+      toChain: info.toChain as any,
+      toToken: info.toToken as any,
+      amount: BigNumber.from(info.amount),
+    })
+  } else if (KnownChainId.isBRC20Chain(info.fromChain)) {
+    return
+  } else if (KnownChainId.isRunesChain(info.fromChain)) {
+    if (!KnownTokenId.isRunesToken(info.fromToken)) return
+    params = await getInstantSwapParameters_FromMeta(getSDKContext(sdk), {
+      fromChain: info.fromChain,
+      fromToken: info.fromToken,
+      toChain: info.toChain as any,
+      toToken: info.toToken as any,
+      amount: BigNumber.from(info.amount),
+    })
+  } else if (KnownChainId.isSolanaChain(info.fromChain)) {
+    return
+  } else if (KnownChainId.isTronChain(info.fromChain)) {
+    return
+  } else {
+    checkNever(info.fromChain)
+  }
+
+  if (params == null) return
+
+  return {
+    ...params,
+    fromAmount: toSDKNumberOrUndefined(params.fromAmount),
+  }
 }

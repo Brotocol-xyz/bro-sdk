@@ -3,6 +3,7 @@ import * as btc from "@scure/btc-signer"
 import { Address, OutScript } from "@scure/btc-signer"
 import { sum } from "../utils/bigintHelpers"
 import { BigNumber } from "../utils/BigNumber"
+import { SDKNumber } from "../sdkUtils/types"
 
 export interface UTXOBasic {
   txId: string
@@ -56,11 +57,13 @@ export function scriptPubKeyToAddress(
   return Address(network).encode(OutScript.decode(output))
 }
 
-export function bitcoinToSatoshi(bitcoinAmount: string): bigint {
+export function bitcoinToSatoshi(
+  bitcoinAmount: `${number}` | SDKNumber | BigNumber,
+): bigint {
   return BigNumber.toBigInt({}, BigNumber.rightMoveDecimals(8, bitcoinAmount))
 }
 
-export function satoshiToBitcoin(satoshiAmount: bigint): string {
+export function satoshiToBitcoin(satoshiAmount: bigint): `${number}` {
   return BigNumber.toString(BigNumber.leftMoveDecimals(8, satoshiAmount))
 }
 
@@ -93,4 +96,13 @@ export function getRedeemScript_from_P2SH_P2WPKH_publicKey(
   publicKey: Uint8Array,
 ): Uint8Array {
   return btc.p2sh(btc.p2wpkh(publicKey, network), network).redeemScript!
+}
+
+export const getTxId = (transaction: Uint8Array): string => {
+  return btc.Transaction.fromRaw(transaction, {
+    allowUnknownInputs: true,
+    allowUnknownOutputs: true,
+    disableScriptCheck: true,
+    allowLegacyWitnessUtxo: true,
+  }).id
 }

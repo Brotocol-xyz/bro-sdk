@@ -1,7 +1,7 @@
 import { toSDKNumberOrUndefined } from "../../../sdkUtils/types"
 import { arraySplit } from "../../arrayHelpers"
 import { BigNumber } from "../../BigNumber"
-import { BroSDKErrorBase } from "../../errors"
+import { AbortError, BroSDKErrorBase } from "../../errors"
 import { checkNever } from "../../typeHelpers"
 import { KnownChainId } from "../../types/knownIds"
 import { FetchRoutesImpl, QueryableRoute } from "./helpers"
@@ -54,7 +54,9 @@ export const fetchKyberSwapPossibleRoutesFactory = (options: {
         )),
       )
 
-      if (info.abortSignal?.aborted) break
+      if (info.abortSignal?.aborted) {
+        throw new AbortError(info.abortSignal.reason)
+      }
     }
 
     return res.flat()
@@ -67,7 +69,7 @@ const fetchKyberSwapPossibleRouteImpl = async (
     baseUrl: string
     clientId?: string
   },
-  info: QueryableRoute,
+  info: QueryableRoute & { id: string },
 ): ReturnType<FetchRoutesImpl> => {
   if (BigNumber.isZero(info.amount)) {
     context.debugLog("Because of amount is 0, skipping...")
@@ -151,6 +153,7 @@ const fetchKyberSwapPossibleRouteImpl = async (
   }
   return [
     {
+      id: info.id,
       provider: "KyberSwap",
       evmChain: info.chain.chain,
       fromToken: info.fromEVMToken.token,
@@ -162,7 +165,6 @@ const fetchKyberSwapPossibleRouteImpl = async (
           respData.data.routeSummary.amountOut,
         ),
       ),
-      slippage: info.slippage,
     },
   ]
 }

@@ -1,7 +1,7 @@
 import { toSDKNumberOrUndefined } from "../../../sdkUtils/types"
 import { arraySplit } from "../../arrayHelpers"
 import { BigNumber } from "../../BigNumber"
-import { BroSDKErrorBase } from "../../errors"
+import { AbortError, BroSDKErrorBase } from "../../errors"
 import { FetchRoutesImpl, QueryableRoute } from "./helpers"
 
 export class FetchIceScreamSwapPossibleRoutesFailedError extends BroSDKErrorBase {
@@ -55,7 +55,9 @@ export const fetchIceScreamSwapPossibleRoutesFactory = (options: {
         )),
       )
 
-      if (info.abortSignal?.aborted) break
+      if (info.abortSignal?.aborted) {
+        throw new AbortError(info.abortSignal.reason)
+      }
     }
 
     return res.flat()
@@ -67,7 +69,7 @@ const fetchIceScreamSwapPossibleRouteImpl = async (
     debugLog: typeof console.log
     baseUrl: string
   },
-  info: QueryableRoute,
+  info: QueryableRoute & { id: string },
 ): ReturnType<FetchRoutesImpl> => {
   if (BigNumber.isZero(info.amount)) {
     context.debugLog("Because of amount is 0, skipping...")
@@ -83,7 +85,7 @@ const fetchIceScreamSwapPossibleRouteImpl = async (
         BigNumber.rightMoveDecimals(info.fromEVMToken.decimals, info.amount),
       ),
     ),
-    slippage: BigNumber.toString(info.slippage),
+    slippage: "10000",
   })
 
   const fetchUrl = `${context.baseUrl}/${String(info.chain.chainId)}?${querystring.toString()}`
@@ -126,6 +128,7 @@ const fetchIceScreamSwapPossibleRouteImpl = async (
 
   return [
     {
+      id: info.id,
       provider: "IceCreamSwap",
       evmChain: info.chain.chain,
       fromToken: info.fromEVMToken.token,
@@ -134,7 +137,6 @@ const fetchIceScreamSwapPossibleRouteImpl = async (
       toAmount: toSDKNumberOrUndefined(
         BigNumber.leftMoveDecimals(info.toEVMToken.decimals, respData.toAmount),
       ),
-      slippage: info.slippage,
     },
   ]
 }

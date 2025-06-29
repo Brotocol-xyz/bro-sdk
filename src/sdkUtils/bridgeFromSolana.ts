@@ -1,12 +1,14 @@
 import { encodeFunctionData, hexToBytes, toHex } from "viem"
 import { SDK_NAME } from "../bitcoinUtils/constants"
-import {
-  getEVMTokenContractInfo
-} from "../evmUtils/contractHelpers"
+import { getEVMTokenContractInfo } from "../evmUtils/contractHelpers"
 import { sendMessageAbi } from "../evmUtils/contractMessageHelpers"
+import { contractAssignedChainIdFromKnownChain } from "../lowlevelUnstableInfos"
 import { metaTokenToCorrespondingStacksToken } from "../metaUtils/peggingHelpers"
 import { AnchorWrapper } from "../solanaUtils/anchorWrapper"
-import { getSolanaConfigs, getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
+import {
+  getSolanaConfigs,
+  getSolanaSupportedRoutes,
+} from "../solanaUtils/getSolanaSupportedRoutes"
 import { isSupportedSolanaRoute } from "../solanaUtils/peggingHelpers"
 import { getStacksTokenContractInfo } from "../stacksUtils/contractHelpers"
 import {
@@ -34,10 +36,10 @@ import {
   evmNativeCurrencyAddress,
   SDKNumber,
   TokenId,
-  type EVMAddress
+  type EVMAddress,
 } from "./types"
 import { SDKGlobalContext } from "./types.internal"
-import { contractAssignedChainIdFromKnownChain } from "../lowlevelUnstableInfos"
+
 export type BridgeFromSolanaInput = {
   fromChain: ChainId
   toChain: ChainId
@@ -197,17 +199,19 @@ async function bridgeFromSolana_toStacks(
   > &
     KnownRoute_FromSolana_ToStacks,
 ): Promise<BridgeFromSolanaOutput> {
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.fromChain)
-  const fromTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.fromToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.fromChain,
+  )
+  const fromTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.fromToken,
+  )
   const toTokenContractInfo = await getStacksTokenContractInfo(
     ctx,
     info.toChain,
     info.toToken,
   )
-  if (
-    fromTokenContractInfo == null ||
-    toTokenContractInfo == null
-  ) {
+  if (fromTokenContractInfo == null || toTokenContractInfo == null) {
     throw new UnsupportedBridgeRouteError(
       info.fromChain,
       info.toChain,
@@ -223,7 +227,7 @@ async function bridgeFromSolana_toStacks(
   const anchorWrapper = new AnchorWrapper(
     solanaConfig.rpcEndpoint,
     solanaConfig.programIds.registry,
-    solanaConfig.programIds.bridgeEndpoint
+    solanaConfig.programIds.bridgeEndpoint,
   )
 
   // Create the message payload for transferToStacks
@@ -239,16 +243,16 @@ async function bridgeFromSolana_toStacks(
     amount: info.amount,
     payload: hexToBytes(message),
     sender: info.fromAddress,
-    senderTokenAccount: info.senderTokenAccount
+    senderTokenAccount: info.senderTokenAccount,
   })
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx.serialize()
+    transaction: tx.serialize(),
   })
 
   return {
-    signature: result.signature
+    signature: result.signature,
   }
 }
 
@@ -260,8 +264,13 @@ async function bridgeFromSolana_toBitcoin(
   > &
     KnownRoute_FromSolana_ToBitcoin,
 ): Promise<BridgeFromSolanaOutput> {
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.fromChain)
-  const fromTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.fromToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.fromChain,
+  )
+  const fromTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.fromToken,
+  )
   if (fromTokenContractInfo == null) {
     throw new UnsupportedBridgeRouteError(
       info.fromChain,
@@ -293,7 +302,7 @@ async function bridgeFromSolana_toBitcoin(
   const anchorWrapper = new AnchorWrapper(
     solanaConfig.rpcEndpoint,
     solanaConfig.programIds.registry,
-    solanaConfig.programIds.bridgeEndpoint
+    solanaConfig.programIds.bridgeEndpoint,
   )
 
   // Create the message payload for transferToBTC
@@ -309,16 +318,16 @@ async function bridgeFromSolana_toBitcoin(
     amount: info.amount,
     payload: hexToBytes(message),
     sender: info.fromAddress,
-    senderTokenAccount: info.senderTokenAccount
+    senderTokenAccount: info.senderTokenAccount,
   })
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx.serialize()
+    transaction: tx.serialize(),
   })
 
   return {
-    signature: result.signature
+    signature: result.signature,
   }
 }
 
@@ -330,8 +339,13 @@ async function bridgeFromSolana_toEVM(
   > &
     KnownRoute_FromSolana_ToEVM,
 ): Promise<BridgeFromSolanaOutput> {
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.fromChain)
-  const fromTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.fromToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.fromChain,
+  )
+  const fromTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.fromToken,
+  )
   const toTokenContractInfo = await getEVMTokenContractInfo(
     ctx,
     info.toChain,
@@ -358,7 +372,7 @@ async function bridgeFromSolana_toEVM(
   const anchorWrapper = new AnchorWrapper(
     solanaConfig.rpcEndpoint,
     solanaConfig.programIds.registry,
-    solanaConfig.programIds.bridgeEndpoint
+    solanaConfig.programIds.bridgeEndpoint,
   )
 
   // Create the message payload for transferToEVM
@@ -378,16 +392,16 @@ async function bridgeFromSolana_toEVM(
     amount: info.amount,
     payload: hexToBytes(message),
     sender: info.fromAddress,
-    senderTokenAccount: info.senderTokenAccount
+    senderTokenAccount: info.senderTokenAccount,
   })
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx.serialize()
+    transaction: tx.serialize(),
   })
 
   return {
-    signature: result.signature
+    signature: result.signature,
   }
 }
 
@@ -399,8 +413,13 @@ async function bridgeFromSolana_toMeta(
   > &
     (KnownRoute_FromSolana_ToBRC20 | KnownRoute_FromSolana_ToRunes),
 ): Promise<BridgeFromSolanaOutput> {
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.fromChain)
-  const fromTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.fromToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.fromChain,
+  )
+  const fromTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.fromToken,
+  )
 
   const toTokenCorrespondingStacksToken =
     await metaTokenToCorrespondingStacksToken(ctx, {
@@ -411,12 +430,12 @@ async function bridgeFromSolana_toMeta(
     toTokenCorrespondingStacksToken == null
       ? undefined
       : await getStacksTokenContractInfo(
-        ctx,
-        KnownChainId.isSolanaChain(info.fromChain)
-          ? KnownChainId.Stacks.Mainnet
-          : KnownChainId.Stacks.Testnet,
-        toTokenCorrespondingStacksToken,
-      )
+          ctx,
+          KnownChainId.isSolanaChain(info.fromChain)
+            ? KnownChainId.Stacks.Mainnet
+            : KnownChainId.Stacks.Testnet,
+          toTokenCorrespondingStacksToken,
+        )
 
   if (
     fromTokenContractInfo == null ||
@@ -456,7 +475,7 @@ async function bridgeFromSolana_toMeta(
   const anchorWrapper = new AnchorWrapper(
     solanaConfig.rpcEndpoint,
     solanaConfig.programIds.registry,
-    solanaConfig.programIds.bridgeEndpoint
+    solanaConfig.programIds.bridgeEndpoint,
   )
 
   // Create the message payload for transferToBRC20 or transferToRunes
@@ -477,16 +496,16 @@ async function bridgeFromSolana_toMeta(
     amount: info.amount,
     payload: hexToBytes(message),
     sender: info.fromAddress,
-    senderTokenAccount: info.senderTokenAccount
+    senderTokenAccount: info.senderTokenAccount,
   })
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx.serialize()
+    transaction: tx.serialize(),
   })
 
   return {
-    signature: result.signature
+    signature: result.signature,
   }
 }
 
@@ -498,14 +517,18 @@ async function bridgeFromSolana_toSolana(
   > &
     KnownRoute_FromSolana_ToSolana,
 ): Promise<BridgeFromSolanaOutput> {
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.fromChain)
-  const fromTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.fromToken)
-  const toTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.toToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.fromChain,
+  )
+  const fromTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.fromToken,
+  )
+  const toTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.toToken,
+  )
 
-  if (
-    fromTokenContractInfo == null ||
-    toTokenContractInfo == null
-  ) {
+  if (fromTokenContractInfo == null || toTokenContractInfo == null) {
     throw new UnsupportedBridgeRouteError(
       info.fromChain,
       info.toChain,
@@ -578,4 +601,4 @@ async function bridgeFromSolana_toTron(
     info.fromToken,
     info.toToken,
   )
-} 
+}

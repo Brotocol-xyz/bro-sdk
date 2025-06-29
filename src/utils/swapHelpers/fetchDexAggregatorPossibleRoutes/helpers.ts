@@ -1,7 +1,7 @@
 import { readContract } from "viem/actions"
 import { ERC20Abi } from "../../../evmUtils/contractAbi/ERC20Abi"
-import { evmChainIdFromKnownChainId } from "../../../evmUtils/evmClients"
 import { getEVMTokenContractInfo } from "../../../evmUtils/contractHelpers"
+import { evmChainIdFromKnownChainId } from "../../../evmUtils/evmClients"
 import {
   EVMAddress,
   evmNativeCurrencyAddress,
@@ -28,7 +28,6 @@ export interface QueryableRoute {
     decimals: number
   }
   amount: SDKNumber
-  slippage: SDKNumber
 }
 
 export interface DexAggregatorRoute {
@@ -38,13 +37,12 @@ export interface DexAggregatorRoute {
   toToken: KnownTokenId.EVMToken
   fromAmount: SDKNumber
   toAmount: SDKNumber
-  slippage: SDKNumber
 }
 
 export type FetchRoutesImpl = (info: {
-  possibleRoutes: QueryableRoute[]
+  possibleRoutes: (QueryableRoute & { id: string })[]
   abortSignal?: AbortSignal
-}) => Promise<DexAggregatorRoute[]>
+}) => Promise<(DexAggregatorRoute & { id: string })[]>
 
 export async function getQueryableRoutes(
   sdkContext: SDKGlobalContext,
@@ -53,7 +51,6 @@ export async function getQueryableRoutes(
     fromToken: KnownTokenId.EVMToken
     toToken: KnownTokenId.EVMToken
     amount: BigNumber
-    slippage: BigNumber
   },
 ): Promise<undefined | QueryableRoute> {
   const [chainId, fromEVMToken, toEVMToken] = await Promise.all([
@@ -105,6 +102,5 @@ export async function getQueryableRoutes(
       decimals: toTokenDecimals,
     },
     amount: toSDKNumberOrUndefined(info.amount),
-    slippage: toSDKNumberOrUndefined(info.slippage),
   }
 }

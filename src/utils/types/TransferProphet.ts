@@ -1,4 +1,4 @@
-import { SDK_NAME } from "../../bitcoinUtils/constants"
+import { SDK_NAME } from "../../constants"
 import {
   SDKNumber,
   SDKNumberifyNestly,
@@ -11,6 +11,7 @@ import {
   applyTransferProphet,
   applyTransferProphets,
   composeTransferProphets,
+  TransferProphetAppliedResult,
 } from "../feeRateHelpers"
 import { checkNever, isNotNull, OneOrMore } from "../typeHelpers"
 import { KnownChainId, KnownTokenId } from "./knownIds"
@@ -39,6 +40,7 @@ export type TransferProphet_Fee =
 export interface TransferProphet {
   isPaused: boolean
   bridgeToken: KnownTokenId.KnownToken
+  reserveAmount: null | BigNumber
   minBridgeAmount: null | BigNumber
   maxBridgeAmount: null | BigNumber
   fees: TransferProphet_Fee[]
@@ -88,6 +90,10 @@ export function transformFromPublicTransferProphet(
             : checkNever(f),
       )
       .filter(isNotNull),
+    reserveAmount:
+      transferProphet.reserveAmount == null
+        ? null
+        : BigNumber.from(transferProphet.reserveAmount),
     minBridgeAmount:
       transferProphet.minBridgeAmount == null
         ? null
@@ -131,6 +137,7 @@ export function transformToPublicTransferProphet(
     fromAmount: toSDKNumberOrUndefined(fromAmount),
     toAmount: toSDKNumberOrUndefined(result.netAmount),
     isPaused: transferProphet.isPaused,
+    reserveAmount: toSDKNumberOrUndefined(transferProphet.reserveAmount),
     minBridgeAmount: toSDKNumberOrUndefined(transferProphet.minBridgeAmount),
     maxBridgeAmount: toSDKNumberOrUndefined(transferProphet.maxBridgeAmount),
     fees,
@@ -168,29 +175,53 @@ export const transformToPublicTransferProphetAggregated = (
     )
   }
 
+  const transformFees = (
+    fees: TransferProphetAppliedResult["fees"],
+  ): PublicTransferProphet["fees"] => {
+    return fees
+      .map(f =>
+        f.type === "rate"
+          ? {
+              ...f,
+              rate: toSDKNumberOrUndefined(f.rate),
+              minimumAmount: toSDKNumberOrUndefined(f.minimumAmount),
+              amount: toSDKNumberOrUndefined(f.amount),
+            }
+          : f.type === "fixed"
+            ? {
+                ...f,
+                amount: toSDKNumberOrUndefined(f.amount),
+              }
+            : checkNever(f),
+      )
+      .filter(isNotNull)
+  }
+
+  if (transferProphets.length === 1) {
+    const [route] = routes
+    const [transferProphet] = transferProphets
+    const applyResult = applyTransferProphet(transferProphet, fromAmount)
+    const toAmount = BigNumber.mul(applyResult.netAmount, exchangeRates[0])
+    return {
+      fromChain: route.fromChain,
+      fromToken: route.fromToken,
+      toChain: route.toChain,
+      toToken: route.toToken,
+      fromAmount: toSDKNumberOrUndefined(fromAmount),
+      toAmount: toSDKNumberOrUndefined(toAmount),
+      isPaused: transferProphet.isPaused,
+      fees: transformFees(applyResult.fees),
+      reserveAmount: toSDKNumberOrUndefined(transferProphet.reserveAmount),
+      minBridgeAmount: toSDKNumberOrUndefined(transferProphet.minBridgeAmount),
+      maxBridgeAmount: toSDKNumberOrUndefined(transferProphet.maxBridgeAmount),
+      transferProphets: [],
+    }
+  }
+
   const composed = composeTransferProphets(transferProphets, exchangeRates)
   const applyResult = applyTransferProphets(transferProphets, fromAmount, {
     exchangeRates,
   })
-
-  const fees: PublicTransferProphet["fees"] = applyResult
-    .flatMap(r => r.fees)
-    .map(f =>
-      f.type === "rate"
-        ? {
-            ...f,
-            rate: toSDKNumberOrUndefined(f.rate),
-            minimumAmount: toSDKNumberOrUndefined(f.minimumAmount),
-            amount: toSDKNumberOrUndefined(f.amount),
-          }
-        : f.type === "fixed"
-          ? {
-              ...f,
-              amount: toSDKNumberOrUndefined(f.amount),
-            }
-          : checkNever(f),
-    )
-    .filter(isNotNull)
 
   const firstRoute = first(routes)
   const lastRoute = last(routes)
@@ -210,7 +241,8 @@ export const transformToPublicTransferProphetAggregated = (
     fromAmount: toSDKNumberOrUndefined(fromAmount),
     toAmount: toSDKNumberOrUndefined(last(applyResult).netAmount),
     isPaused: composed.isPaused,
-    fees,
+    fees: transformFees(applyResult.flatMap(r => r.fees)),
+    reserveAmount: toSDKNumberOrUndefined(composed.reserveAmount),
     minBridgeAmount: toSDKNumberOrUndefined(composed.minBridgeAmount),
     maxBridgeAmount: toSDKNumberOrUndefined(composed.maxBridgeAmount),
     transferProphets: publicTransferProphets,

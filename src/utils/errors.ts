@@ -1,8 +1,10 @@
-import { SDK_NAME } from "../bitcoinUtils/constants"
+import { InstantSwapJobFailedReasonCode } from "../bitcoinUtils/apiHelpers/createInstantSwapTx"
+import { SDK_NAME } from "../constants"
 import { ChainId, TokenId } from "../sdkUtils/types"
 import {
   SwapRouteViaALEX,
   SwapRouteViaEVMDexAggregator,
+  SwapRouteViaInstantSwap,
 } from "./SwapRouteHelpers"
 
 /** Extends the Error class and serves as the base for all custom errors within the SDK. */
@@ -10,6 +12,14 @@ export class BroSDKErrorBase extends Error {
   constructor(...args: ConstructorParameters<typeof Error>) {
     super(...args)
     this.name = `${SDK_NAME}ErrorBase`
+  }
+}
+
+export class AbortError extends BroSDKErrorBase {
+  constructor(reason: unknown) {
+    super("Abort", { cause: reason })
+    this.name = "AbortError"
+    this.cause = reason
   }
 }
 
@@ -68,7 +78,10 @@ export class UnsupportedBridgeRouteError extends BroSDKErrorBase {
     public toChain: ChainId,
     public fromToken: TokenId,
     public toToken?: TokenId,
-    public swap?: SwapRouteViaALEX | SwapRouteViaEVMDexAggregator,
+    public swap?:
+      | SwapRouteViaALEX
+      | SwapRouteViaEVMDexAggregator
+      | SwapRouteViaInstantSwap,
   ) {
     super(
       `Unsupported chain combination: ${fromToken}(${fromChain})${swap ? ` via ${swap.via}` : ""} -> ${toToken ?? "Unknown Token"}(${toChain})`,
@@ -89,5 +102,19 @@ export class UnsupportedContractAssignedChainIdError extends BroSDKErrorBase {
   constructor(public chainId: bigint) {
     super(`Unsupported smart contract assigned chain id: ${chainId}`)
     this.name = "UnsupportedContractAssignedChainIdError"
+  }
+}
+
+export enum InstantSwapTransactionCreationFailedReasonCode {
+  Timeout = InstantSwapJobFailedReasonCode.Timeout,
+  BroadcastFailed = InstantSwapJobFailedReasonCode.BroadcastFailed,
+}
+export class InstantSwapTransactionCreationFailedError extends BroSDKErrorBase {
+  constructor(
+    public reasonCode: InstantSwapTransactionCreationFailedReasonCode,
+    public reasonDetails: string,
+  ) {
+    super(`Instant swap transaction creation failed: ${reasonCode}`)
+    this.name = "InstantSwapFinalizeJobFailedError"
   }
 }

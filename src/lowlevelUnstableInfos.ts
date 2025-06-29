@@ -23,8 +23,14 @@ import {
   solanaTokenFromCorrespondingStacksToken,
 } from "./solanaUtils/peggingHelpers"
 import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
-import { StacksContractAddress } from "./sdkUtils/types"
+import {
+  SDKNumber,
+  StacksContractAddress,
+  toSDKNumberOrUndefined,
+} from "./sdkUtils/types"
 import { SDKGlobalContext } from "./sdkUtils/types.internal"
+import { BigNumber } from "./utils/BigNumber"
+import { deserializeCV, serializeCVBytes } from "@stacks/transactions"
 
 export {
   contractAssignedChainIdFromKnownChain,
@@ -80,6 +86,13 @@ export {
   composeTransferProphets,
 } from "./utils/feeRateHelpers"
 
+export {
+  createStacksToken,
+  createBRC20Token,
+  createRunesToken,
+  createEVMToken,
+} from "./utils/types/knownIds"
+
 export { addressFromBuffer, addressToBuffer } from "./utils/addressHelpers"
 
 export { bridgeFromEVM_toLaunchpad } from "./sdkUtils/bridgeFromEVM"
@@ -87,6 +100,8 @@ export { bridgeInfoFromEVM_toLaunchpad } from "./sdkUtils/bridgeInfoFromEVM"
 export { bridgeInfoFromBitcoin_toLaunchpad } from "./sdkUtils/bridgeInfoFromBitcoin"
 
 export { getBitcoinHardLinkageAddress } from "./bitcoinUtils/btcAddresses"
+
+export * as BitcoinTransactionCheckHelpers from "./utils/bitcoinTransactionCheckHelpers.export"
 
 export const getSDKContext = (
   sdk: import("./BroSDK").BroSDK,
@@ -231,5 +246,66 @@ export const stacksTokenToSolanaTokens = async (
   chain: KnownChainId.SolanaChain,
   token: KnownTokenId.StacksToken,
 ): Promise<KnownTokenId.SolanaToken[]> => {
-  return solanaTokenFromCorrespondingStacksToken(getSDKContext(sdk), chain, token)
+  return solanaTokenFromCorrespondingStacksToken(
+    getSDKContext(sdk),
+    chain,
+    token,
+  )
+}
+
+import {
+  InstantSwapOrderData as _InstantSwapOrderData,
+  decodeInstantSwapOrderData as _decodeInstantSwapOrderData,
+  encodeInstantSwapOrderData as _encodeInstantSwapOrderData,
+} from "./bitcoinUtils/apiHelpers/InstantSwapOrder"
+export interface InstantSwapOrderData
+  extends Omit<_InstantSwapOrderData, "fromAmount" | "toAmount"> {
+  fromAmount: SDKNumber
+  toAmount: SDKNumber
+}
+export const encodeInstantSwapOrderData = async (
+  stacksNetwork: KnownChainId.StacksChain,
+  data: InstantSwapOrderData,
+): Promise<undefined | Uint8Array> => {
+  const res = await _encodeInstantSwapOrderData(stacksNetwork, {
+    ...data,
+    fromAmount: BigNumber.from(data.fromAmount),
+    toAmount: BigNumber.from(data.toAmount),
+  })
+  if (res == null) return
+  return serializeCVBytes(res)
+}
+export const decodeInstantSwapOrderData = async (
+  stacksNetwork: KnownChainId.StacksChain,
+  data: Uint8Array,
+): Promise<undefined | InstantSwapOrderData> => {
+  const res = await _decodeInstantSwapOrderData(
+    stacksNetwork,
+    deserializeCV(data),
+  )
+  if (res == null) return
+  return {
+    ...res,
+    fromAmount: toSDKNumberOrUndefined(res.fromAmount),
+    toAmount: toSDKNumberOrUndefined(res.toAmount),
+  }
+}
+
+import {
+  tokenIdFromBuffer as _tokenIdFromBuffer,
+  tokenIdToBuffer as _tokenIdToBuffer,
+} from "./utils/tokenIdHelpers"
+export function tokenIdFromBuffer(
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.KnownChain,
+  buffer: Uint8Array,
+): Promise<undefined | KnownTokenId.KnownToken> {
+  return _tokenIdFromBuffer(getSDKContext(sdk), chain, buffer)
+}
+export function tokenIdToBuffer(
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.KnownChain,
+  token: KnownTokenId.KnownToken,
+): Promise<undefined | Uint8Array> {
+  return _tokenIdToBuffer(getSDKContext(sdk), chain, token)
 }

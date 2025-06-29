@@ -7,6 +7,17 @@ import {
 import { SDKNumber } from "./sdkUtils/types"
 import { UTXOSpendable } from "./bitcoinHelpers"
 import { BigNumber } from "./utils/BigNumber"
+import { RuneId } from "./utils/RunesProtocol/RunesProtocol.types"
+
+export const parseRuneId = (runeId: RuneIdCombined): RuneId => {
+  const [_blockHeight, _txIndex] = runeId.split(":")
+  const blockHeight = BigInt(_blockHeight)
+  const txIndex = BigInt(_txIndex)
+  return {
+    blockHeight,
+    txIndex,
+  }
+}
 
 export type SpendableRuneUTXO = UTXOSpendable & {
   runes: Record<

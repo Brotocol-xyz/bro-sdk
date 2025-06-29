@@ -21,17 +21,23 @@ export namespace Result {
     return true
   }
 
-  export const ok = <const TOK>(payload: TOK): Result.OK<TOK> => ({
-    type: "ok",
-    payload,
-  })
+  export function ok(): Result.OK<void>
+  export function ok<const TOK>(payload: TOK): Result.OK<TOK>
+  export function ok<const TOK>(payload?: TOK): Result.OK<TOK> {
+    return {
+      type: "ok",
+      payload: payload as TOK,
+    }
+  }
 
-  export const error = <const TError>(
-    payload: TError,
-  ): Result.Error<TError> => ({
-    type: "error",
-    payload,
-  })
+  export function error(): Result.Error<void>
+  export function error<const TError>(payload: TError): Result.Error<TError>
+  export function error<const TError>(payload?: TError): Result.Error<TError> {
+    return {
+      type: "error",
+      payload: payload as TError,
+    }
+  }
 
   export const maybeValue = <TOK, TError>(
     res: Result<TOK, TError>,
@@ -134,28 +140,35 @@ export namespace Result {
   }
 
   interface CurriedFlatMapFn {
-    <TOKInput, TOKOutput, TError>(
-      mapping: (payload: TOKInput) => Result<TOKOutput, TError>,
-    ): (res: Result<TOKInput, TError>) => Result<TOKOutput, TError>
-    <TOKInput, TOKOutput, TError>(
-      mapping: (payload: TOKInput) => Result<TOKOutput, TError>,
-      res: Result<TOKInput, TError>,
-    ): Result<TOKOutput, TError>
+    <TOKInput, TErrorInput, TOKOutput, TErrorOutput>(
+      mapping: (payload: TOKInput) => Result<TOKOutput, TErrorOutput>,
+    ): (
+      res: Result<TOKInput, TErrorInput>,
+    ) => Result<TOKOutput, TErrorInput | TErrorOutput>
+    <TOKInput, TErrorInput, TOKOutput, TErrorOutput>(
+      mapping: (payload: TOKInput) => Result<TOKOutput, TErrorOutput>,
+      res: Result<TOKInput, TErrorInput | TErrorInput>,
+    ): Result<TOKOutput, TErrorOutput>
   }
-  export const flatMap: CurriedFlatMapFn = <TOKInput, TOKOutput, TError>(
-    mapping: (payload: TOKInput) => Result<TOKOutput, TError>,
-    res?: Result<TOKInput, TError>,
+  export const flatMap: CurriedFlatMapFn = <
+    TOKInput,
+    TErrorInput,
+    TOKOutput,
+    TErrorOutput,
+  >(
+    mapping: (payload: TOKInput) => Result<TOKOutput, TErrorOutput>,
+    res?: Result<TOKInput, TErrorInput>,
   ): any => {
     if (res == null) {
-      return (res: Result<TOKInput, TError>) => realMap(mapping, res)
+      return (res: Result<TOKInput, TErrorInput>) => realMap(mapping, res)
     } else {
       return realMap(mapping, res)
     }
 
     function realMap(
-      mapping: (payload: TOKInput) => Result<TOKOutput, TError>,
-      res: Result<TOKInput, TError>,
-    ): Result<TOKOutput, TError> {
+      mapping: (payload: TOKInput) => Result<TOKOutput, TErrorOutput>,
+      res: Result<TOKInput, TErrorInput>,
+    ): Result<TOKOutput, TErrorInput | TErrorOutput> {
       if (res.type === "error") return res
       return mapping(res.payload)
     }

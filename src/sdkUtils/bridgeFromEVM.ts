@@ -1,6 +1,6 @@
 import { encodeFunctionData, Hex, toHex } from "viem"
 import { estimateGas } from "viem/actions"
-import { SDK_NAME } from "../bitcoinUtils/constants"
+import { SDK_NAME } from "../constants"
 import { BridgeEndpointAbi } from "../evmUtils/contractAbi/bridgeEndpoint"
 import { NativeBridgeEndpointAbi } from "../evmUtils/contractAbi/nativeBridgeEndpoint"
 import {

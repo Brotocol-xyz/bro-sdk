@@ -43,9 +43,51 @@ export interface EVMDexAggregatorSwapParameters {
 export interface GetPossibleEVMDexAggregatorSwapParametersImplOptions {
   ignoreTransferProphetPaused: boolean
   skipTransferProphetFees: boolean
+  logLevel: "info" | "verbose" | "debug"
 }
 
 export async function getPossibleEVMDexAggregatorSwapParametersImpl(
+  sdkContext: SDKGlobalContext,
+  info: (
+    | KnownRoute_FromBitcoin
+    | KnownRoute_FromBRC20
+    | KnownRoute_FromRunes
+  ) & {
+    amount: BigNumber
+    getInitialToStacksTransferProphet: (info: {
+      transitStacksChain: KnownChainId.StacksChain
+      firstStepToStacksToken: KnownTokenId.StacksToken
+    }) => Promise<undefined | TransferProphet>
+  },
+  options: GetPossibleEVMDexAggregatorSwapParametersImplOptions,
+): Promise<EVMDexAggregatorSwapParameters[]> {
+  if (options.logLevel === "verbose") {
+    console.info("[getPossibleEVMDexAggregatorSwapParameters] start", {
+      ...info,
+      amount: BigNumber.toString(info.amount),
+    })
+  }
+
+  const res = await _getPossibleEVMDexAggregatorSwapParametersImpl(
+    sdkContext,
+    info,
+    options,
+  )
+
+  if (options.logLevel === "verbose") {
+    console.info(
+      "[getPossibleEVMDexAggregatorSwapParameters] end",
+      res.map(r => ({
+        ...r,
+        fromAmount: BigNumber.toString(r.fromAmount),
+      })),
+    )
+  }
+
+  return res
+}
+
+async function _getPossibleEVMDexAggregatorSwapParametersImpl(
   sdkContext: SDKGlobalContext,
   info: (
     | KnownRoute_FromBitcoin
@@ -78,62 +120,102 @@ export async function getPossibleEVMDexAggregatorSwapParametersImpl(
         KnownChainId.Runes.Mainnet === info.toChain)
     )
   ) {
+    if (options.logLevel === "debug") {
+      console.debug(
+        "[getPossibleEVMDexAggregatorSwapParameters] unsupported from/to chain, return []",
+      )
+    }
     return []
   }
-
-  const { ignoreTransferProphetPaused, skipTransferProphetFees } = options
 
   const transitStacksChain =
     getChainIdNetworkType(info.fromChain) === "mainnet"
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet
 
-  const [firstStepToStacksToken, lastStepFromStacksToken] = await Promise.all([
+  const [fromStacksToken, toStacksToken] = await Promise.all([
     toCorrespondingStacksToken(sdkContext, info.fromChain, info.fromToken),
     toCorrespondingStacksToken(sdkContext, info.toChain, info.toToken),
   ])
-  if (firstStepToStacksToken == null || lastStepFromStacksToken == null) {
+  if (fromStacksToken == null || toStacksToken == null) {
+    if (options.logLevel === "debug") {
+      console.debug(
+        "[getPossibleEVMDexAggregatorSwapParameters] cannot find corresponding stacks tokens, return []",
+        "fromStacksToken",
+        fromStacksToken,
+        "toStacksToken",
+        toStacksToken,
+      )
+    }
     return []
   }
 
   const initialToStacksTransferProphet =
     await info.getInitialToStacksTransferProphet({
       transitStacksChain,
-      firstStepToStacksToken,
+      firstStepToStacksToken: fromStacksToken,
     })
   if (
     initialToStacksTransferProphet == null ||
-    (ignoreTransferProphetPaused
+    (options.ignoreTransferProphetPaused
       ? false
       : initialToStacksTransferProphet.isPaused)
   ) {
+    if (options.logLevel === "debug") {
+      console.debug(
+        "[getPossibleEVMDexAggregatorSwapParameters] initial to-stacks transfer prophet is null or paused, return []",
+        JSON.stringify(initialToStacksTransferProphet),
+      )
+    }
     return []
   }
 
   return Promise.all(
-    possibleSwapOnEVMChains.map(async evmChain =>
-      _getEVMDexAggregatorSwapParametersImpl(
+    possibleSwapOnEVMChains.map(async evmChain => {
+      if (options.logLevel === "verbose") {
+        console.info(
+          "[getPossibleEVMDexAggregatorSwapParameters] checking possible evm dex aggregator swap parameters for",
+          evmChain,
+        )
+      }
+
+      const res = await _getEVMDexAggregatorSwapParametersImpl(
         sdkContext,
         {
           initialToStacksRoute: {
             fromChain: info.fromChain as KnownChainId.BitcoinChain,
             fromToken: info.fromToken as KnownTokenId.BitcoinToken,
             toChain: transitStacksChain,
-            toToken: firstStepToStacksToken,
+            toToken: fromStacksToken,
           },
           initialToStacksTransferProphet,
           transitStacksChain,
-          firstStepToStacksToken,
-          lastStepFromStacksToken,
+          fromStacksToken,
+          toStacksToken,
           evmChain,
           amount: info.amount,
         },
         {
-          ignoreTransferProphetPaused,
-          skipTransferProphetFees,
+          ignoreTransferProphetPaused: options.ignoreTransferProphetPaused,
+          skipTransferProphetFees: options.skipTransferProphetFees,
+          logLevel: options.logLevel,
         },
-      ),
-    ),
+      )
+
+      if (options.logLevel === "verbose") {
+        console.info(
+          "[getPossibleEVMDexAggregatorSwapParameters] check evm chain result:",
+          evmChain,
+          "result:",
+          res.map(r => ({
+            ...r,
+            fromAmount: BigNumber.toString(r.fromAmount),
+          })),
+        )
+      }
+
+      return res
+    }),
   ).then(res => res.flat())
 }
 async function _getEVMDexAggregatorSwapParametersImpl(
@@ -142,19 +224,14 @@ async function _getEVMDexAggregatorSwapParametersImpl(
     initialToStacksRoute: KnownRoute_ToStacks
     initialToStacksTransferProphet: TransferProphet
     transitStacksChain: KnownChainId.StacksChain
-    firstStepToStacksToken: KnownTokenId.StacksToken
-    lastStepFromStacksToken: KnownTokenId.StacksToken
+    fromStacksToken: KnownTokenId.StacksToken
+    toStacksToken: KnownTokenId.StacksToken
     evmChain: KnownChainId.EVMChain
     amount: BigNumber
   },
   options: Required<GetPossibleEVMDexAggregatorSwapParametersImplOptions>,
 ): Promise<EVMDexAggregatorSwapParameters[]> {
-  const {
-    evmChain,
-    transitStacksChain,
-    firstStepToStacksToken,
-    lastStepFromStacksToken,
-  } = info
+  const { evmChain, transitStacksChain, fromStacksToken, toStacksToken } = info
 
   const filterOutAvailableTokens = async (
     tokens: KnownTokenId.EVMToken[],
@@ -173,15 +250,26 @@ async function _getEVMDexAggregatorSwapParametersImpl(
     evmTokenFromCorrespondingStacksToken(
       sdkContext,
       evmChain,
-      firstStepToStacksToken,
+      fromStacksToken,
     ).then(filterOutAvailableTokens),
     evmTokenFromCorrespondingStacksToken(
       sdkContext,
       evmChain,
-      lastStepFromStacksToken,
+      toStacksToken,
     ).then(filterOutAvailableTokens),
   ])
-  if (!hasAny(possibleFromTokens) || !hasAny(possibleToTokens)) return []
+  if (!hasAny(possibleFromTokens) || !hasAny(possibleToTokens)) {
+    if (options.logLevel === "debug") {
+      console.debug(
+        "[getPossibleEVMDexAggregatorSwapParameters] no possible from/to evm tokens, return []",
+        "possibleFromTokens",
+        possibleFromTokens,
+        "possibleToTokens",
+        possibleToTokens,
+      )
+    }
+    return []
+  }
 
   const fromTokensWithTransferProphet = await Promise.all(
     possibleFromTokens.map(token =>
@@ -189,7 +277,7 @@ async function _getEVMDexAggregatorSwapParametersImpl(
         sdkContext,
         {
           fromChain: transitStacksChain,
-          fromToken: firstStepToStacksToken,
+          fromToken: fromStacksToken,
           toChain: evmChain,
           toToken: token,
         },
@@ -198,13 +286,41 @@ async function _getEVMDexAggregatorSwapParametersImpl(
           initialRoute: info.initialToStacksRoute,
         },
       ).then(feeInfo => {
-        if (feeInfo == null) return null
-
-        if (!options.ignoreTransferProphetPaused && feeInfo.isPaused) {
+        if (feeInfo == null) {
+          if (options.logLevel === "debug") {
+            console.debug(
+              "[getPossibleEVMDexAggregatorSwapParameters] no transfer prophet for from token",
+              token,
+            )
+          }
           return null
         }
 
-        if (!isTransferProphetValid(feeInfo, info.amount)) return null
+        if (!options.ignoreTransferProphetPaused && feeInfo.isPaused) {
+          if (options.logLevel === "debug") {
+            console.debug(
+              "[getPossibleEVMDexAggregatorSwapParameters] from token transfer prophet is paused",
+              token,
+              "transferProphet",
+              JSON.stringify(feeInfo),
+            )
+          }
+          return null
+        }
+
+        if (!isTransferProphetValid(feeInfo, info.amount)) {
+          if (options.logLevel === "debug") {
+            console.debug(
+              "[getPossibleEVMDexAggregatorSwapParameters] from token transfer prophet is not valid",
+              token,
+              "amount",
+              BigNumber.toString(info.amount),
+              "transferProphet",
+              JSON.stringify(feeInfo),
+            )
+          }
+          return null
+        }
 
         return { token, transferProphet: feeInfo }
       }),
@@ -217,11 +333,27 @@ async function _getEVMDexAggregatorSwapParametersImpl(
         fromChain: evmChain,
         fromToken: token,
         toChain: transitStacksChain,
-        toToken: lastStepFromStacksToken,
+        toToken: toStacksToken,
       }).then(feeInfo => {
-        if (feeInfo == null) return null
+        if (feeInfo == null) {
+          if (options.logLevel === "debug") {
+            console.debug(
+              "[getPossibleEVMDexAggregatorSwapParameters] no transfer prophet for to token",
+              token,
+            )
+          }
+          return null
+        }
 
         if (!options.ignoreTransferProphetPaused && feeInfo.isPaused) {
+          if (options.logLevel === "debug") {
+            console.debug(
+              "[getPossibleEVMDexAggregatorSwapParameters] to token transfer prophet is paused",
+              token,
+              "transferProphet",
+              JSON.stringify(feeInfo),
+            )
+          }
           return null
         }
 
@@ -274,6 +406,13 @@ function isTransferProphetValid(
   if (
     feeInfo.maxBridgeAmount != null &&
     BigNumber.isGt(amount, feeInfo.maxBridgeAmount)
+  ) {
+    return false
+  }
+
+  if (
+    feeInfo.reserveAmount != null &&
+    BigNumber.isLt(feeInfo.reserveAmount, amount)
   ) {
     return false
   }

@@ -1,7 +1,7 @@
 import { toSDKNumberOrUndefined } from "../../../sdkUtils/types"
 import { arraySplit } from "../../arrayHelpers"
 import { BigNumber } from "../../BigNumber"
-import { BroSDKErrorBase } from "../../errors"
+import { AbortError, BroSDKErrorBase } from "../../errors"
 import { FetchRoutesImpl, QueryableRoute } from "./helpers"
 
 export class FetchMatchaPossibleRoutesFailedError extends BroSDKErrorBase {
@@ -56,7 +56,9 @@ export const fetchMatchaPossibleRoutesFactory = (options: {
         )),
       )
 
-      if (info.abortSignal?.aborted) break
+      if (info.abortSignal?.aborted) {
+        throw new AbortError(info.abortSignal.reason)
+      }
     }
 
     return res.flat()
@@ -69,7 +71,7 @@ const fetchMatchaPossibleRouteImpl = async (
     baseUrl: string
     debugLog: typeof console.log
   },
-  info: QueryableRoute,
+  info: QueryableRoute & { id: string },
 ): ReturnType<FetchRoutesImpl> => {
   if (BigNumber.isZero(info.amount)) {
     context.debugLog("Because of amount is 0, skipping...")
@@ -87,7 +89,7 @@ const fetchMatchaPossibleRouteImpl = async (
       ),
     ),
     taker: `0x00000000000000000000000000000000000fffff`,
-    slippageBps: BigNumber.toString(BigNumber.mul(info.slippage, 10000)),
+    slippageBps: "10000",
   })
 
   const fetchUrl =
@@ -148,6 +150,7 @@ const fetchMatchaPossibleRouteImpl = async (
 
   return [
     {
+      id: info.id,
       provider: "Matcha",
       evmChain: info.chain.chain,
       fromToken: info.fromEVMToken.token,
@@ -159,7 +162,6 @@ const fetchMatchaPossibleRouteImpl = async (
           respData.buyAmount,
         ),
       ),
-      slippage: info.slippage,
     },
   ]
 }

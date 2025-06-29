@@ -7,7 +7,7 @@ import { decodeHex } from "../../utils/hexHelpers"
 import { KnownChainId, KnownTokenId } from "../../utils/types/knownIds"
 import { SDKGlobalContext } from "../../sdkUtils/types.internal"
 import { getBTCPegInAddress } from "../btcAddresses"
-import { BITCOIN_OUTPUT_MINIMUM_AMOUNT } from "../constants"
+import { BITCOIN_OUTPUT_MINIMUM_AMOUNT } from "../../constants"
 import { calculateFee } from "../prepareTransaction"
 import { getMetaPegInAddress } from "../../metaUtils/btcAddresses"
 

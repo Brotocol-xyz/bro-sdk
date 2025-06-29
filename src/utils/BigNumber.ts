@@ -3,8 +3,8 @@ import { OneOrMore } from "./typeHelpers"
 import { last } from "./arrayHelpers"
 import { reduce } from "./arrayHelpers"
 
-Big.PE = 21
-Big.NE = -21
+Big.PE = 50
+Big.NE = -50
 
 export type BigNumberSource = number | bigint | string | Big | BigNumber
 
@@ -52,8 +52,8 @@ export namespace BigNumber {
     return fromBig(toBig(value as any))
   }
 
-  export const toString = (value: BigNumberSource): string => {
-    return toBig(value).toString()
+  export const toString = (value: BigNumberSource): `${number}` => {
+    return toBig(value).toString() as `${number}`
   }
 
   export const toNumber = (value: BigNumberSource): number => {

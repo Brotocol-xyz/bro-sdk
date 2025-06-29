@@ -8,3 +8,7 @@ export async function props<I extends Record<string, any>>(
     Object.keys(inputs).map((k, i) => [k, res[i]]) as any,
   ) as any
 }
+
+export async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}

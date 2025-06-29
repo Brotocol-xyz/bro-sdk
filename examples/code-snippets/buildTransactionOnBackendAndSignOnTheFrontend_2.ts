@@ -1,3 +1,15 @@
+/**
+ * **WARNING**: this approach is not compatible with the instant swap, use the
+ *   `buildTransactionOnBackendAndSignOnTheFrontend_1.ts` instead.
+ *
+ * This example shows how to build a transaction on the backend and sign it on the frontend.
+ *
+ * The backend will build the transaction and return the sign info to the frontend.
+ * The frontend will sign the transaction and submit the signed transaction to the backend.
+ *
+ * The backend will broadcast the transaction on the backend as well.
+ */
+
 import { UTXOSpendable } from "../../src/bitcoinHelpers"
 import {
   BridgeFromBitcoinInput,
