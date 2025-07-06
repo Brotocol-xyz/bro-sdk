@@ -7,6 +7,7 @@ import {
 import {
   EVMDexAggregatorSwapParameters,
   getPossibleEVMDexAggregatorSwapParametersImpl,
+  GetPossibleEVMDexAggregatorSwapParametersImplOptions,
 } from "../utils/swapHelpers/evmDexAggregatorSwapParametersHelpers"
 import { SDKGlobalContext } from "../sdkUtils/types.internal"
 import { getBtc2StacksFeeInfo } from "./peggingHelpers"
@@ -38,19 +39,24 @@ export async function getPossibleEVMDexAggregatorSwapParameters_FromBitcoin(
   info: KnownRoute_FromBitcoin & {
     amount: BigNumber
   },
+  options: GetPossibleEVMDexAggregatorSwapParametersImplOptions,
 ): Promise<EVMDexAggregatorSwapParameters[]> {
-  return getPossibleEVMDexAggregatorSwapParametersImpl(sdkContext, {
-    ...info,
-    getInitialToStacksTransferProphet: ctx =>
-      getBtc2StacksFeeInfo(
-        sdkContext,
-        {
-          fromChain: info.fromChain,
-          fromToken: info.fromToken,
-          toChain: ctx.transitStacksChain,
-          toToken: ctx.firstStepToStacksToken,
-        },
-        { swapRoute: { via: "evmDexAggregator" } },
-      ),
-  })
+  return getPossibleEVMDexAggregatorSwapParametersImpl(
+    sdkContext,
+    {
+      ...info,
+      getInitialToStacksTransferProphet: ctx =>
+        getBtc2StacksFeeInfo(
+          sdkContext,
+          {
+            fromChain: info.fromChain,
+            fromToken: info.fromToken,
+            toChain: ctx.transitStacksChain,
+            toToken: ctx.firstStepToStacksToken,
+          },
+          { swapRoute: { via: "evmDexAggregator" } },
+        ),
+    },
+    options,
+  )
 }

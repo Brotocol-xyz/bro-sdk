@@ -7,6 +7,7 @@ import {
 import {
   EVMDexAggregatorSwapParameters,
   getPossibleEVMDexAggregatorSwapParametersImpl,
+  GetPossibleEVMDexAggregatorSwapParametersImplOptions,
 } from "../utils/swapHelpers/evmDexAggregatorSwapParametersHelpers"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
 import { SDKGlobalContext } from "../sdkUtils/types.internal"
@@ -39,19 +40,24 @@ export async function getPossibleEVMDexAggregatorSwapParameters_FromMeta(
   info: KnownRoute_FromMeta & {
     amount: BigNumber
   },
+  options: GetPossibleEVMDexAggregatorSwapParametersImplOptions,
 ): Promise<EVMDexAggregatorSwapParameters[]> {
-  return getPossibleEVMDexAggregatorSwapParametersImpl(sdkContext, {
-    ...info,
-    getInitialToStacksTransferProphet: ctx =>
-      getMeta2StacksFeeInfo(
-        sdkContext,
-        {
-          fromChain: info.fromChain as KnownChainId.BRC20Chain,
-          fromToken: info.fromToken as KnownTokenId.BRC20Token,
-          toChain: ctx.transitStacksChain,
-          toToken: ctx.firstStepToStacksToken,
-        },
-        { swapRoute: { via: "evmDexAggregator" } },
-      ),
-  })
+  return getPossibleEVMDexAggregatorSwapParametersImpl(
+    sdkContext,
+    {
+      ...info,
+      getInitialToStacksTransferProphet: ctx =>
+        getMeta2StacksFeeInfo(
+          sdkContext,
+          {
+            fromChain: info.fromChain as KnownChainId.BRC20Chain,
+            fromToken: info.fromToken as KnownTokenId.BRC20Token,
+            toChain: ctx.transitStacksChain,
+            toToken: ctx.firstStepToStacksToken,
+          },
+          { swapRoute: { via: "evmDexAggregator" } },
+        ),
+    },
+    options,
+  )
 }

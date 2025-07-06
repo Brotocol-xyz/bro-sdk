@@ -2,12 +2,14 @@ import {
   getALEXSwapParameters_FromBitcoin,
   getPossibleEVMDexAggregatorSwapParameters_FromBitcoin,
 } from "./bitcoinUtils/swapHelpers"
+import { BroSDK } from "./BroSDK"
 import { getALEXSwapParameters_FromEVM } from "./evmUtils/swapHelpers"
 import { getSDKContext } from "./lowlevelUnstableInfos"
 import {
   getALEXSwapParameters_FromMeta,
   getPossibleEVMDexAggregatorSwapParameters_FromMeta,
 } from "./metaUtils/swapHelpers"
+import { SDKNumber, toSDKNumberOrUndefined } from "./sdkUtils/types"
 import { BigNumber } from "./utils/BigNumber"
 import { KnownRoute } from "./utils/buildSupportedRoutes"
 import { ALEXSwapParameters as _ALEXSwapParameters } from "./utils/swapHelpers/alexSwapParametersHelpers"
@@ -19,8 +21,6 @@ import {
 } from "./utils/swapHelpers/getDexAggregatorRoutes"
 import { checkNever } from "./utils/typeHelpers"
 import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
-import { BroSDK } from "./BroSDK"
-import { SDKNumber, toSDKNumberOrUndefined } from "./sdkUtils/types"
 
 export interface ALEXSwapParameters
   extends Omit<_ALEXSwapParameters, "fromAmount"> {
@@ -110,7 +110,16 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
   info: KnownRoute & {
     amount: SDKNumber
   },
+  options: {
+    ignoreTransferProphetPaused?: false
+    skipTransferProphetFees?: false
+  } = {},
 ): Promise<EVMDexAggregatorSwapParameters[]> {
+  const {
+    ignoreTransferProphetPaused = false,
+    skipTransferProphetFees = false,
+  } = options
+
   if (KnownChainId.isStacksChain(info.fromChain)) {
     return []
   }
@@ -130,6 +139,10 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
         toChain: info.toChain as any,
         toToken: info.toToken as any,
         amount: BigNumber.from(info.amount),
+      },
+      {
+        ignoreTransferProphetPaused,
+        skipTransferProphetFees,
       },
     )
     if (res == null) return []
@@ -154,6 +167,10 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
         toToken: info.toToken as any,
         amount: BigNumber.from(info.amount),
       },
+      {
+        ignoreTransferProphetPaused,
+        skipTransferProphetFees,
+      },
     )
     if (res == null) return []
 
@@ -177,6 +194,10 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
         toToken: info.toToken as any,
         amount: BigNumber.from(info.amount),
       },
+      {
+        ignoreTransferProphetPaused,
+        skipTransferProphetFees,
+      },
     )
     if (res == null) return []
 
@@ -192,19 +213,19 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
   return []
 }
 
-export { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
 export {
   fetchIceScreamSwapPossibleRoutesFactory,
   FetchIceScreamSwapPossibleRoutesFailedError,
 } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchIceScreamSwapPossibleRoutes"
 export {
-  fetchMatchaPossibleRoutesFactory,
-  FetchMatchaPossibleRoutesFailedError,
-} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchMatchaPossibleRoutes"
-export {
   fetchKyberSwapPossibleRoutesFactory,
   FetchKyberSwapPossibleRoutesFailedError,
 } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchKyberSwapPossibleRoutes"
+export {
+  fetchMatchaPossibleRoutesFactory,
+  FetchMatchaPossibleRoutesFailedError,
+} from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchMatchaPossibleRoutes"
+export { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
 export interface DexAggregatorRoute
   extends Omit<_DexAggregatorRoute, "fromAmount" | "toAmount" | "slippage"> {
   fromAmount: SDKNumber

@@ -40,6 +40,11 @@ export interface EVMDexAggregatorSwapParameters {
   fromAmount: BigNumber
 }
 
+export interface GetPossibleEVMDexAggregatorSwapParametersImplOptions {
+  ignoreTransferProphetPaused: boolean
+  skipTransferProphetFees: boolean
+}
+
 export async function getPossibleEVMDexAggregatorSwapParametersImpl(
   sdkContext: SDKGlobalContext,
   info: (
@@ -53,6 +58,7 @@ export async function getPossibleEVMDexAggregatorSwapParametersImpl(
       firstStepToStacksToken: KnownTokenId.StacksToken
     }) => Promise<undefined | TransferProphet>
   },
+  options: GetPossibleEVMDexAggregatorSwapParametersImplOptions,
 ): Promise<EVMDexAggregatorSwapParameters[]> {
   /**
    * currently we only support:
@@ -75,6 +81,8 @@ export async function getPossibleEVMDexAggregatorSwapParametersImpl(
     return []
   }
 
+  const { ignoreTransferProphetPaused, skipTransferProphetFees } = options
+
   const transitStacksChain =
     getChainIdNetworkType(info.fromChain) === "mainnet"
       ? KnownChainId.Stacks.Mainnet
@@ -95,27 +103,36 @@ export async function getPossibleEVMDexAggregatorSwapParametersImpl(
     })
   if (
     initialToStacksTransferProphet == null ||
-    initialToStacksTransferProphet.isPaused
+    (ignoreTransferProphetPaused
+      ? false
+      : initialToStacksTransferProphet.isPaused)
   ) {
     return []
   }
 
   return Promise.all(
     possibleSwapOnEVMChains.map(async evmChain =>
-      _getEVMDexAggregatorSwapParametersImpl(sdkContext, {
-        initialToStacksRoute: {
-          fromChain: info.fromChain as KnownChainId.BitcoinChain,
-          fromToken: info.fromToken as KnownTokenId.BitcoinToken,
-          toChain: transitStacksChain,
-          toToken: firstStepToStacksToken,
+      _getEVMDexAggregatorSwapParametersImpl(
+        sdkContext,
+        {
+          initialToStacksRoute: {
+            fromChain: info.fromChain as KnownChainId.BitcoinChain,
+            fromToken: info.fromToken as KnownTokenId.BitcoinToken,
+            toChain: transitStacksChain,
+            toToken: firstStepToStacksToken,
+          },
+          initialToStacksTransferProphet,
+          transitStacksChain,
+          firstStepToStacksToken,
+          lastStepFromStacksToken,
+          evmChain,
+          amount: info.amount,
         },
-        initialToStacksTransferProphet,
-        transitStacksChain,
-        firstStepToStacksToken,
-        lastStepFromStacksToken,
-        evmChain,
-        amount: info.amount,
-      }),
+        {
+          ignoreTransferProphetPaused,
+          skipTransferProphetFees,
+        },
+      ),
     ),
   ).then(res => res.flat())
 }
@@ -130,6 +147,7 @@ async function _getEVMDexAggregatorSwapParametersImpl(
     evmChain: KnownChainId.EVMChain
     amount: BigNumber
   },
+  options: Required<GetPossibleEVMDexAggregatorSwapParametersImplOptions>,
 ): Promise<EVMDexAggregatorSwapParameters[]> {
   const {
     evmChain,
@@ -181,7 +199,13 @@ async function _getEVMDexAggregatorSwapParametersImpl(
         },
       ).then(feeInfo => {
         if (feeInfo == null) return null
+
+        if (!options.ignoreTransferProphetPaused && feeInfo.isPaused) {
+          return null
+        }
+
         if (!isTransferProphetValid(feeInfo, info.amount)) return null
+
         return { token, transferProphet: feeInfo }
       }),
     ),
@@ -194,26 +218,37 @@ async function _getEVMDexAggregatorSwapParametersImpl(
         fromToken: token,
         toChain: transitStacksChain,
         toToken: lastStepFromStacksToken,
-      }).then(feeInfo =>
+      }).then(feeInfo => {
+        if (feeInfo == null) return null
+
+        if (!options.ignoreTransferProphetPaused && feeInfo.isPaused) {
+          return null
+        }
+
         /**
          * we can not compare the amount with the max/min bridge amount here,
          * since we can not know the swapped amount here
          */
-        feeInfo == null || feeInfo.isPaused ? null : token,
-      ),
+
+        return token
+      }),
     ),
   ).then(tokens => tokens.filter(isNotNull))
 
   const results: EVMDexAggregatorSwapParameters[] = []
   for (const fromToken of fromTokensWithTransferProphet) {
     for (const toToken of toTokens) {
-      const feeInfos = [
-        info.initialToStacksTransferProphet,
-        fromToken.transferProphet,
-      ] as const
-      const fromAmount = last(
-        applyTransferProphets(feeInfos, BigNumber.from(info.amount)),
-      ).netAmount
+      let fromAmount = info.amount
+      if (!options.skipTransferProphetFees) {
+        const feeInfos = [
+          info.initialToStacksTransferProphet,
+          fromToken.transferProphet,
+        ] as const
+        fromAmount = last(
+          applyTransferProphets(feeInfos, BigNumber.from(info.amount)),
+        ).netAmount
+      }
+
       results.push({
         evmChain,
         fromToken: fromToken.token,
@@ -229,8 +264,6 @@ function isTransferProphetValid(
   feeInfo: TransferProphet,
   amount: BigNumber,
 ): boolean {
-  if (feeInfo.isPaused) return false
-
   if (
     feeInfo.minBridgeAmount != null &&
     BigNumber.isLt(amount, feeInfo.minBridgeAmount)
