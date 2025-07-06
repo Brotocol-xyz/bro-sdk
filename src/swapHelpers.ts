@@ -111,8 +111,8 @@ export async function getPossibleEVMDexAggregatorSwapParameters(
     amount: SDKNumber
   },
   options: {
-    ignoreTransferProphetPaused?: false
-    skipTransferProphetFees?: false
+    ignoreTransferProphetPaused?: boolean
+    skipTransferProphetFees?: boolean
   } = {},
 ): Promise<EVMDexAggregatorSwapParameters[]> {
   const {
