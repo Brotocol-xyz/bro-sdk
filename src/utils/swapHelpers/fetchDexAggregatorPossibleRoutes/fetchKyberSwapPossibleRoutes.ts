@@ -85,7 +85,7 @@ const fetchKyberSwapPossibleRouteImpl = async (
   const querystring = new URLSearchParams({
     tokenIn: info.fromEVMToken.address,
     tokenOut: info.toEVMToken.address,
-    amountIn: String(
+    amountIn: BigNumber.toString(
       BigNumber.toBigInt(
         { roundingMode: BigNumber.roundDown },
         BigNumber.rightMoveDecimals(info.fromEVMToken.decimals, info.amount),
@@ -94,8 +94,9 @@ const fetchKyberSwapPossibleRouteImpl = async (
   })
 
   const fetchUrl =
-    `${context.baseUrl}/${kyberChainId}/api/v1/routes?${querystring.toString()}`.replace(
-      /^\/+/,
+    context.baseUrl.replace(/\/*$/, "/") +
+    `${kyberChainId}/api/v1/routes?${querystring.toString()}`.replace(
+      /\/+/,
       "/",
     )
   context.debugLog("fetchUrl", fetchUrl)

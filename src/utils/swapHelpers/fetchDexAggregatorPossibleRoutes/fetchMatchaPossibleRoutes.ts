@@ -80,7 +80,7 @@ const fetchMatchaPossibleRouteImpl = async (
     chainId: String(info.chain.chainId),
     sellToken: info.fromEVMToken.address,
     buyToken: info.toEVMToken.address,
-    sellAmount: String(
+    sellAmount: BigNumber.toString(
       BigNumber.toBigInt(
         { roundingMode: BigNumber.roundDown },
         BigNumber.rightMoveDecimals(info.fromEVMToken.decimals, info.amount),
@@ -91,10 +91,8 @@ const fetchMatchaPossibleRouteImpl = async (
   })
 
   const fetchUrl =
-    `${context.baseUrl}/swap/allowance-holder/quote?${querystring.toString()}`.replace(
-      /^\/+/,
-      "/",
-    )
+    context.baseUrl.replace(/\/*$/, "/") +
+    `swap/allowance-holder/quote?${querystring.toString()}`.replace(/\/+/, "/")
   context.debugLog("fetchUrl", fetchUrl)
 
   const resp = await fetch(fetchUrl, {
