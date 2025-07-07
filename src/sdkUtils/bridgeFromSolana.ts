@@ -38,6 +38,7 @@ import {
 } from "./types"
 import { SDKGlobalContext } from "./types.internal"
 import { contractAssignedChainIdFromKnownChain } from "../lowlevelUnstableInfos"
+import type { Transaction } from "@solana/web3.js"
 
 export type BridgeFromSolanaInput = {
   fromChain: ChainId
@@ -56,7 +57,7 @@ export type BridgeFromSolanaInput = {
   senderTokenAccount: string
   amount: SDKNumber
   sendTransaction: (tx: {
-    serializedTransaction: Uint8Array
+    transaction: Transaction
   }) => Promise<{
     signature: string
   }>
@@ -238,15 +239,9 @@ async function bridgeFromSolana_toStacks(
     senderTokenAccount: info.senderTokenAccount
   })
 
-  const { blockhash } = await anchorWrapper.getLatestBlockhash();
-  tx.recentBlockhash = blockhash;
-
-  // Serialize the transaction
-  const serializedTransaction = tx.serialize({ requireAllSignatures: false })
-
   // Send the transaction
   const result = await info.sendTransaction({
-    serializedTransaction
+    transaction: tx
   })
 
   return {
@@ -314,12 +309,9 @@ async function bridgeFromSolana_toBitcoin(
     senderTokenAccount: info.senderTokenAccount
   })
 
-  // Serialize the transaction
-  const serializedTransaction = tx.serialize({ requireAllSignatures: false })
-
   // Send the transaction
   const result = await info.sendTransaction({
-    serializedTransaction
+    transaction: tx
   })
 
   return {
@@ -386,12 +378,9 @@ async function bridgeFromSolana_toEVM(
     senderTokenAccount: info.senderTokenAccount
   })
 
-  // Serialize the transaction
-  const serializedTransaction = tx.serialize({ requireAllSignatures: false })
-
   // Send the transaction
   const result = await info.sendTransaction({
-    serializedTransaction
+    transaction: tx
   })
 
   return {
@@ -488,12 +477,9 @@ async function bridgeFromSolana_toMeta(
     senderTokenAccount: info.senderTokenAccount
   })
 
-  // Serialize the transaction
-  const serializedTransaction = tx.serialize({ requireAllSignatures: false })
-
   // Send the transaction
   const result = await info.sendTransaction({
-    serializedTransaction
+    transaction: tx
   })
 
   return {
