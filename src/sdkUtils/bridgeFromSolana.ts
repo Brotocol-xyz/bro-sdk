@@ -238,6 +238,9 @@ async function bridgeFromSolana_toStacks(
     senderTokenAccount: info.senderTokenAccount
   })
 
+  const { blockhash } = await anchorWrapper.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+
   // Serialize the transaction
   const serializedTransaction = tx.serialize({ requireAllSignatures: false })
 

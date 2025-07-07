@@ -72,6 +72,11 @@ export class AnchorWrapper {
     );
   }
 
+  async getLatestBlockhash(): Promise<{ blockhash: string, lastValidBlockHeight: number }> {
+    const { blockhash, lastValidBlockHeight } = await this.provider.connection.getLatestBlockhash();
+    return { blockhash, lastValidBlockHeight };
+  }
+
   /**
    * Get the token config account for a specific token mint
    * @param mintAddress The mint address of the token
