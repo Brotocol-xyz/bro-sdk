@@ -316,6 +316,9 @@ export class BroSDK {
       evm: {
         routesConfigCache: new Map(),
         feeRateCache: new Map(),
+        tokenInfoCaches: {
+          decimals: new Map(),
+        },
         onChainConfigCache,
         viemClients: {
           ...defaultEvmClients,

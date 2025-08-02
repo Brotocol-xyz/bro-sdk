@@ -11,6 +11,8 @@ import { nativeCurrencyAddress } from "./addressHelpers"
 import { getEVMOnChainConfig } from "./apiHelpers/getEVMOnChainConfig"
 import { getEVMSupportedRoutes } from "./apiHelpers/getEVMSupportedRoutes"
 import { EVMEndpointContract } from "./evmContractAddresses"
+import { readContract } from "viem/actions"
+import { ERC20Abi } from "./contractAbi/ERC20Abi"
 
 const CONTRACT_COMMON_NUMBER_SCALE = 18
 export const numberFromSolidityContractNumber = (
@@ -112,4 +114,36 @@ export async function getEVMToken(
   return routes.find(
     r => r.evmTokenAddress.toLowerCase() === tokenAddress.toLowerCase(),
   )?.evmToken
+}
+
+export function getERC20TokenDecimals(
+  sdkContext: SDKGlobalContext,
+  chainId: KnownChainId.EVMChain,
+  tokenAddress: EVMAddress,
+): Promise<undefined | number> {
+  const cacheKey = `${chainId}:${tokenAddress}`
+
+  const tokenInfoCache = sdkContext.evm.tokenInfoCaches.decimals.get(cacheKey)
+  if (tokenInfoCache != null) return tokenInfoCache
+
+  const client = sdkContext.evm.viemClients[chainId]
+  if (client == null) return Promise.resolve(undefined)
+
+  const resPromise = readContract(client, {
+    abi: ERC20Abi,
+    address: tokenAddress,
+    functionName: "decimals",
+  }).catch(err => {
+    queueMicrotask(() => {
+      if (
+        sdkContext.evm.tokenInfoCaches.decimals.get(cacheKey) === resPromise
+      ) {
+        sdkContext.evm.tokenInfoCaches.decimals.delete(cacheKey)
+      }
+    })
+    throw err
+  })
+  sdkContext.evm.tokenInfoCaches.decimals.set(cacheKey, resPromise)
+
+  return resPromise
 }

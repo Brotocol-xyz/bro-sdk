@@ -83,6 +83,9 @@ export interface SDKGlobalContext {
       string,
       Promise<undefined | TransferProphet>
     >
+    tokenInfoCaches: {
+      decimals: SDKGlobalContextCache<string, Promise<undefined | number>>
+    }
     routesConfigCache?: SDKGlobalContextCache<
       "mainnet" | "testnet",
       Promise<EVMSupportedRoute[]>

@@ -1,6 +1,9 @@
 import { readContract } from "viem/actions"
 import { ERC20Abi } from "../../../evmUtils/contractAbi/ERC20Abi"
-import { getEVMTokenContractInfo } from "../../../evmUtils/contractHelpers"
+import {
+  getERC20TokenDecimals,
+  getEVMTokenContractInfo,
+} from "../../../evmUtils/contractHelpers"
 import { evmChainIdFromKnownChainId } from "../../../evmUtils/evmClients"
 import {
   EVMAddress,
@@ -68,23 +71,19 @@ export async function getQueryableRoutes(
     return
   }
 
-  const client = Object.values(sdkContext.evm.viemClients).find(
-    c => c.chain?.id === Number(chainId),
-  )
-  if (client == null) return
-
   const [fromTokenDecimals, toTokenDecimals] = await Promise.all([
-    readContract(client, {
-      abi: ERC20Abi,
-      address: fromEVMToken.tokenContractAddress,
-      functionName: "decimals",
-    }),
-    readContract(client, {
-      abi: ERC20Abi,
-      address: toEVMToken.tokenContractAddress,
-      functionName: "decimals",
-    }),
+    getERC20TokenDecimals(
+      sdkContext,
+      info.evmChain,
+      fromEVMToken.tokenContractAddress,
+    ),
+    getERC20TokenDecimals(
+      sdkContext,
+      info.evmChain,
+      toEVMToken.tokenContractAddress,
+    ),
   ])
+  if (fromTokenDecimals == null || toTokenDecimals == null) return
 
   return {
     chain: {
