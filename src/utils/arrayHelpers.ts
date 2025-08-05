@@ -39,6 +39,21 @@ export function last<T>(ary: readonly T[]): undefined | T {
   return ary[ary.length - 1]
 }
 
+export function mapArray<T, U>(
+  ary: readonly [T, ...T[]],
+  iteratee: (item: T, index: number, ary: readonly T[]) => U,
+): [U, ...U[]]
+export function mapArray<T, U>(
+  ary: readonly T[],
+  iteratee: (item: T, index: number, ary: readonly T[]) => U,
+): U[]
+export function mapArray<T, U>(
+  ary: readonly T[],
+  iteratee: (item: T, index: number, ary: readonly T[]) => U,
+): U[] {
+  return ary.map(iteratee)
+}
+
 const _concat = [].concat
 export function concat<Ts extends any[]>(
   ...inputArrays: Ts[]

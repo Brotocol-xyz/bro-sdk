@@ -3,6 +3,7 @@
  *   not covered by semantic versioning. Please use them at your own risk.
  */
 
+import { deserializeCV, serializeCVBytes } from "@stacks/transactions"
 import {
   getEVMTokenFromTerminatingStacksTokenContractAddress as _getEVMTokenFromTerminatingStacksTokenContractAddress,
   getStacksTokenFromTerminatingStacksTokenContractAddress as _getStacksTokenFromTerminatingStacksTokenContractAddress,
@@ -15,22 +16,28 @@ import {
   metaTokenToCorrespondingStacksToken,
 } from "./metaUtils/peggingHelpers"
 import {
-  tronTokenToCorrespondingStacksToken,
-  tronTokenFromCorrespondingStacksToken,
-} from "./tronUtils/peggingHelpers"
-import {
-  solanaTokenToCorrespondingStacksToken,
-  solanaTokenFromCorrespondingStacksToken,
-} from "./solanaUtils/peggingHelpers"
-import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
-import {
   SDKNumber,
+  SDKNumberifyNestly,
   StacksContractAddress,
   toSDKNumberOrUndefined,
 } from "./sdkUtils/types"
 import { SDKGlobalContext } from "./sdkUtils/types.internal"
+import {
+  solanaTokenFromCorrespondingStacksToken,
+  solanaTokenToCorrespondingStacksToken,
+} from "./solanaUtils/peggingHelpers"
+import {
+  tronTokenFromCorrespondingStacksToken,
+  tronTokenToCorrespondingStacksToken,
+} from "./tronUtils/peggingHelpers"
 import { BigNumber } from "./utils/BigNumber"
-import { deserializeCV, serializeCVBytes } from "@stacks/transactions"
+import {
+  TransferProphetAppliedResult as _TransferProphetAppliedResult,
+  applyTransferProphet as _applyTransferProphet,
+  applyTransferProphets as _applyTransferProphets,
+} from "./utils/feeRateHelpers"
+import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
+import { TransferProphet as _TransferProphet } from "./utils/types/TransferProphet"
 
 export {
   contractAssignedChainIdFromKnownChain,
@@ -41,63 +48,56 @@ export {
   alexContractDeployerTestnet,
   alexContractMultisigMainnet,
   alexContractMultisigTestnet,
-  legacyAlexContractDeployerMainnet,
-  legacyAlexContractDeployerTestnet,
-  wrapContractAddress,
   contractsDeployerMainnet as brotocolContractsDeployerMainnet,
   contractsDeployerTestnet as brotocolContractsDeployerTestnet,
   contractsMultisigMainnet as brotocolContractsMultisigMainnet,
   contractsMultisigTestnet as brotocolContractsMultisigTestnet,
+  legacyAlexContractDeployerMainnet,
+  legacyAlexContractDeployerTestnet,
+  wrapContractAddress,
 } from "./stacksUtils/stxContractAddresses"
 
 export {
-  KnownRoute_FromBitcoin,
-  KnownRoute_FromBitcoin_ToBRC20,
-  KnownRoute_FromBitcoin_ToEVM,
-  KnownRoute_FromBitcoin_ToRunes,
-  KnownRoute_FromBitcoin_ToStacks,
   KnownRoute_FromBRC20,
   KnownRoute_FromBRC20_ToBitcoin,
   KnownRoute_FromBRC20_ToEVM,
   KnownRoute_FromBRC20_ToRunes,
   KnownRoute_FromBRC20_ToStacks,
+  KnownRoute_FromBitcoin,
+  KnownRoute_FromBitcoin_ToBRC20,
+  KnownRoute_FromBitcoin_ToEVM,
+  KnownRoute_FromBitcoin_ToRunes,
+  KnownRoute_FromBitcoin_ToStacks,
   KnownRoute_FromEVM,
-  KnownRoute_FromEVM_ToBitcoin,
   KnownRoute_FromEVM_ToBRC20,
+  KnownRoute_FromEVM_ToBitcoin,
   KnownRoute_FromEVM_ToEVM,
   KnownRoute_FromEVM_ToRunes,
   KnownRoute_FromEVM_ToStacks,
   KnownRoute_FromRunes,
-  KnownRoute_FromRunes_ToBitcoin,
   KnownRoute_FromRunes_ToBRC20,
+  KnownRoute_FromRunes_ToBitcoin,
   KnownRoute_FromRunes_ToEVM,
   KnownRoute_FromRunes_ToStacks,
   KnownRoute_FromStacks,
-  KnownRoute_FromStacks_ToBitcoin,
   KnownRoute_FromStacks_ToBRC20,
+  KnownRoute_FromStacks_ToBitcoin,
   KnownRoute_FromStacks_ToEVM,
   KnownRoute_FromStacks_ToRunes,
 } from "./utils/buildSupportedRoutes"
 
 export {
-  applyTransferProphets,
-  applyTransferProphet,
-  TransferProphetAppliedResult,
-  composeTransferProphets,
-} from "./utils/feeRateHelpers"
-
-export {
-  createStacksToken,
   createBRC20Token,
-  createRunesToken,
   createEVMToken,
+  createRunesToken,
+  createStacksToken,
 } from "./utils/types/knownIds"
 
 export { addressFromBuffer, addressToBuffer } from "./utils/addressHelpers"
 
 export { bridgeFromEVM_toLaunchpad } from "./sdkUtils/bridgeFromEVM"
-export { bridgeInfoFromEVM_toLaunchpad } from "./sdkUtils/bridgeInfoFromEVM"
 export { bridgeInfoFromBitcoin_toLaunchpad } from "./sdkUtils/bridgeInfoFromBitcoin"
+export { bridgeInfoFromEVM_toLaunchpad } from "./sdkUtils/bridgeInfoFromEVM"
 
 export { getBitcoinHardLinkageAddress } from "./bitcoinUtils/btcAddresses"
 
@@ -291,10 +291,12 @@ export const decodeInstantSwapOrderData = async (
   }
 }
 
+import { mapArray } from "./utils/arrayHelpers"
 import {
   tokenIdFromBuffer as _tokenIdFromBuffer,
   tokenIdToBuffer as _tokenIdToBuffer,
 } from "./utils/tokenIdHelpers"
+import { OneOrMore } from "./utils/typeHelpers"
 export function tokenIdFromBuffer(
   sdk: import("./BroSDK").BroSDK,
   chain: KnownChainId.KnownChain,
@@ -308,4 +310,95 @@ export function tokenIdToBuffer(
   token: KnownTokenId.KnownToken,
 ): Promise<undefined | Uint8Array> {
   return _tokenIdToBuffer(getSDKContext(sdk), chain, token)
+}
+
+export type BasicTransferProphet = SDKNumberifyNestly<_TransferProphet>
+export type BasicTransferProphetAppliedResult =
+  SDKNumberifyNestly<_TransferProphetAppliedResult>
+const transformToBasicTransferProphetAppliedResult = (
+  res: _TransferProphetAppliedResult,
+): BasicTransferProphetAppliedResult => {
+  return {
+    netAmount: toSDKNumberOrUndefined(res.netAmount),
+    fees: res.fees.map(fee =>
+      fee.type === "rate"
+        ? {
+            ...fee,
+            rate: toSDKNumberOrUndefined(fee.rate),
+            minimumAmount: toSDKNumberOrUndefined(fee.minimumAmount),
+            amount: toSDKNumberOrUndefined(fee.amount),
+          }
+        : { ...fee, amount: toSDKNumberOrUndefined(fee.amount) },
+    ),
+  }
+}
+const transformFromBasicTransferProphet = (
+  transferProphet: BasicTransferProphet,
+): _TransferProphet => {
+  return {
+    ...transferProphet,
+    reserveAmount:
+      transferProphet.reserveAmount == null
+        ? null
+        : BigNumber.from(transferProphet.reserveAmount),
+    minBridgeAmount:
+      transferProphet.minBridgeAmount == null
+        ? null
+        : BigNumber.from(transferProphet.minBridgeAmount),
+    maxBridgeAmount:
+      transferProphet.maxBridgeAmount == null
+        ? null
+        : BigNumber.from(transferProphet.maxBridgeAmount),
+    fees: transferProphet.fees.map(fee =>
+      fee.type === "rate"
+        ? {
+            ...fee,
+            rate: BigNumber.from(fee.rate),
+            minimumAmount: BigNumber.from(fee.minimumAmount),
+          }
+        : {
+            ...fee,
+            amount: BigNumber.from(fee.amount),
+          },
+    ),
+  }
+}
+export async function applyTransferProphet(
+  sdk: import("./BroSDK").BroSDK,
+  transferProphet: BasicTransferProphet,
+  amount: SDKNumber,
+): Promise<BasicTransferProphetAppliedResult> {
+  const res = _applyTransferProphet(
+    transformFromBasicTransferProphet(transferProphet),
+    BigNumber.from(amount),
+  )
+  return transformToBasicTransferProphetAppliedResult(res)
+}
+export async function applyTransferProphets(
+  sdk: import("./BroSDK").BroSDK,
+  transferProphets: OneOrMore<BasicTransferProphet>,
+  amount: SDKNumber,
+  options: {
+    exchangeRates?: SDKNumber[]
+  } = {},
+): Promise<
+  OneOrMore<
+    BasicTransferProphetAppliedResult & {
+      fromAmount: SDKNumber
+      transferProphetIndex: number
+    }
+  >
+> {
+  const res = _applyTransferProphets(
+    mapArray(transferProphets, transformFromBasicTransferProphet),
+    BigNumber.from(amount),
+    {
+      exchangeRates: options.exchangeRates?.map(BigNumber.from),
+    },
+  )
+  return mapArray(res, (r, idx) => ({
+    ...transformToBasicTransferProphetAppliedResult(r),
+    fromAmount: toSDKNumberOrUndefined(r.fromAmount),
+    transferProphetIndex: idx,
+  }))
 }
