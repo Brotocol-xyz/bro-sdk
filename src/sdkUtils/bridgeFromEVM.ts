@@ -244,7 +244,7 @@ async function bridgeFromEVM_toStacks(
     ],
   })
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -364,7 +364,7 @@ async function bridgeFromEVM_toBitcoin(
     )
   }
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -449,7 +449,7 @@ async function bridgeFromEVM_toEVM(
     ],
   })
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -489,8 +489,13 @@ async function bridgeFromEVM_toSolana(
     info.fromChain,
     info.fromToken,
   )
-  const solanaSupportedRoutes = await getSolanaSupportedRoutes(ctx, info.toChain)
-  const toTokenContractInfo = solanaSupportedRoutes.find(r => r.solanaToken === info.toToken)
+  const solanaSupportedRoutes = await getSolanaSupportedRoutes(
+    ctx,
+    info.toChain,
+  )
+  const toTokenContractInfo = solanaSupportedRoutes.find(
+    r => r.solanaToken === info.toToken,
+  )
   if (toTokenContractInfo == null) {
     throw new UnsupportedBridgeRouteError(
       info.fromChain,
@@ -499,20 +504,18 @@ async function bridgeFromEVM_toSolana(
       info.toToken,
     )
   }
-  const toTokenCorrespondingStacksToken = await solanaTokenToCorrespondingStacksToken(
-    ctx,
-    info.toChain,
-    info.toToken,
-  )
-  const toTokenStacksAddress = toTokenCorrespondingStacksToken == null
-    ? undefined
-    : await getStacksTokenContractInfo(
-      ctx,
-      KnownChainId.isEVMMainnetChain(info.fromChain)
-        ? KnownChainId.Stacks.Mainnet
-        : KnownChainId.Stacks.Testnet,
-      toTokenCorrespondingStacksToken,
-    )
+  const toTokenCorrespondingStacksToken =
+    await solanaTokenToCorrespondingStacksToken(ctx, info.toChain, info.toToken)
+  const toTokenStacksAddress =
+    toTokenCorrespondingStacksToken == null
+      ? undefined
+      : await getStacksTokenContractInfo(
+          ctx,
+          KnownChainId.isEVMMainnetChain(info.fromChain)
+            ? KnownChainId.Stacks.Mainnet
+            : KnownChainId.Stacks.Testnet,
+          toTokenCorrespondingStacksToken,
+        )
 
   const fromTokenContractAddress = fromTokenContractInfo?.tokenContractAddress
   if (
@@ -533,7 +536,9 @@ async function bridgeFromEVM_toSolana(
 
   // i want the code below to typecheck
   if (1 % 2 === 1) {
-    throw new Error(`Not implemented, ${toTokenContractInfo.solanaTokenAddress} need new EVM messages`)
+    throw new Error(
+      `Not implemented, ${toTokenContractInfo.solanaTokenAddress} need new EVM messages`,
+    )
   }
 
   const message = await encodeFunctionData({
@@ -555,7 +560,7 @@ async function bridgeFromEVM_toSolana(
     ],
   })
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -588,7 +593,9 @@ async function bridgeFromEVM_toTron(
   > &
     KnownRoute_FromEVM_ToTron,
 ): Promise<BridgeFromEVMOutput> {
-  throw new Error(`Not implemented, ${info.toToken} EVM to TRON need contract update`)
+  throw new Error(
+    `Not implemented, ${info.toToken} EVM to TRON need contract update`,
+  )
 }
 
 async function bridgeFromEVM_toMeta(
@@ -616,12 +623,12 @@ async function bridgeFromEVM_toMeta(
     toTokenCorrespondingStacksToken == null
       ? undefined
       : await getStacksTokenContractInfo(
-        ctx,
-        KnownChainId.isEVMMainnetChain(info.fromChain)
-          ? KnownChainId.Stacks.Mainnet
-          : KnownChainId.Stacks.Testnet,
-        toTokenCorrespondingStacksToken,
-      )
+          ctx,
+          KnownChainId.isEVMMainnetChain(info.fromChain)
+            ? KnownChainId.Stacks.Mainnet
+            : KnownChainId.Stacks.Testnet,
+          toTokenCorrespondingStacksToken,
+        )
 
   if (
     bridgeEndpointAddress == null ||
@@ -676,7 +683,7 @@ async function bridgeFromEVM_toMeta(
     ],
   })
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -790,7 +797,7 @@ export async function bridgeFromEVM_toLaunchpad(
     ],
   })
 
-  const fallbackGasLimit = 200_000
+  const fallbackGasLimit = getFallbackGasLimit(info.fromChain)
   const estimated = await estimateGas(fromTokenContractInfo.client, {
     account: info.fromAddress,
     to: bridgeEndpointAddress,
@@ -813,4 +820,12 @@ export async function bridgeFromEVM_toLaunchpad(
     data: decodeHex(functionData),
     recommendedGasLimit: toSDKNumberOrUndefined(estimated),
   })
+}
+
+function getFallbackGasLimit(fromChain: KnownChainId.EVMChain): number {
+  const specialCases: Partial<Record<KnownChainId.EVMChain, number>> = {
+    [KnownChainId.EVM.Mezo]: 300_000,
+  }
+
+  return specialCases[fromChain] ?? 200_000
 }
