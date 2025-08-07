@@ -65,7 +65,7 @@ export async function bridgeFromStacks(
         KnownTokenId.isStacksToken(route.fromToken) &&
         KnownTokenId.isBitcoinToken(route.toToken)
       ) {
-        return bridgeFromStacks_toBitcoin({
+        return bridgeFromStacks_toBitcoin(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -161,6 +161,7 @@ export async function bridgeFromStacks(
 }
 
 async function bridgeFromStacks_toBitcoin(
+  ctx: SDKGlobalContext,
   info: Omit<
     BridgeFromStacksInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
@@ -168,6 +169,7 @@ async function bridgeFromStacks_toBitcoin(
     KnownRoute_FromStacks_ToBitcoin,
 ): Promise<BridgeFromStacksOutput> {
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     info.fromChain,
     StacksContractName.BTCPegOutEndpoint,
   )
@@ -210,6 +212,7 @@ async function bridgeFromStacks_toEVM(
     KnownRoute_FromStacks_ToEVM,
 ): Promise<BridgeFromStacksOutput> {
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     info.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )
@@ -261,6 +264,7 @@ async function bridgeFromStacks_toSolana(
     KnownRoute_FromStacks_ToSolana,
 ): Promise<BridgeFromStacksOutput> {
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     info.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )
@@ -312,6 +316,7 @@ async function bridgeFromStacks_toTron(
     KnownRoute_FromStacks_ToTron,
 ): Promise<BridgeFromStacksOutput> {
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     info.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )
@@ -358,6 +363,7 @@ async function bridgeFromStacks_toMeta(
     (KnownRoute_FromStacks_ToBRC20 | KnownRoute_FromStacks_ToRunes),
 ): Promise<BridgeFromStacksOutput> {
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     info.fromChain,
     StacksContractName.MetaPegOutEndpoint,
   )

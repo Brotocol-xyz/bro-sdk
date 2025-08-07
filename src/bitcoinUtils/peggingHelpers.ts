@@ -63,14 +63,17 @@ const _getBtc2StacksFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksBaseContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.toChain,
     StacksContractName.BTCPegInEndpoint,
   )
   const stacksSwapContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.toChain,
     StacksContractName.BTCPegInEndpointSwap,
   )
   const stacksAggContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.toChain,
     StacksContractName.BTCPegInEndpointAggregator,
   )
@@ -210,14 +213,17 @@ const _getStacks2BtcFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.BTCPegOutEndpoint,
   )
   const btcPegInSwapContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.BTCPegInEndpointSwap,
   )
   const metaPegInSwapContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.MetaPegInEndpointSwap,
   )

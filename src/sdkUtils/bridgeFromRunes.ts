@@ -707,7 +707,7 @@ async function broadcastRunesTransaction(
        * due to contract limit, we are unable to validate this tx before the
        * commit tx be confirmed, so we will skip it and fix it in the future
        */
-      void validateBridgeOrderFromMeta({
+      void validateBridgeOrderFromMeta(sdkContext, {
         chainId: info.fromChain,
         commitTx: btcTx,
         revealTx,

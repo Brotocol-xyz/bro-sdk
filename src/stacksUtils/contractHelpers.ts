@@ -13,6 +13,7 @@ import {
   ParameterObjOfDescriptor,
   StringOnly,
 } from "clarity-codegen"
+import { bytesToHex } from "viem"
 import { broContracts } from "../../generated/smartContract/contracts_bro"
 import { STACKS_MAINNET, STACKS_TESTNET } from "../config"
 import {
@@ -97,6 +98,7 @@ export const executeReadonlyCallBro = executeReadonlyCallFactory(
 )
 
 export const getStacksContractCallInfo = <C extends StacksContractName>(
+  ctx: SDKGlobalContext,
   chainId: KnownChainId.StacksChain,
   contractName: C,
 ):
@@ -125,6 +127,18 @@ export const getStacksContractCallInfo = <C extends StacksContractName>(
       deployerAddress:
         stxContractAddresses[contractName][chainId].deployerAddress,
       callReadOnlyFunction(callOptions) {
+        if (ctx.stacks?.logReadonlyCalls) {
+          console.groupCollapsed(
+            `callReadOnlyFunction ${callOptions.contractAddress}.${callOptions.contractName}/${callOptions.functionName}`,
+          )
+          callOptions.functionArgs.forEach((arg, idx) => {
+            console.log(`args[${idx}]:`)
+            console.log(arg)
+            console.log(bytesToHex(serializeCVBytes(arg)))
+          })
+          console.groupEnd()
+        }
+
         return fetchCallReadOnlyFunction({
           ...callOptions,
           contractAddress:

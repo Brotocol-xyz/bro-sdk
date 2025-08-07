@@ -6,6 +6,7 @@ import {
 } from "../utils/SwapRouteHelpers"
 import { getChainIdNetworkType, KnownChainId } from "../utils/types/knownIds"
 import { StacksContractAddress } from "../sdkUtils/types"
+import { SDKGlobalContext } from "../sdkUtils/types.internal"
 import { StacksContractName } from "./stxContractAddresses"
 import {
   executeReadonlyCallBro,
@@ -13,7 +14,9 @@ import {
 } from "./contractHelpers"
 import { checkNever } from "../utils/typeHelpers"
 
-export async function validateBridgeOrderFromMeta(info: {
+export async function validateBridgeOrderFromMeta(
+  ctx: SDKGlobalContext,
+  info: {
   chainId: KnownChainId.BRC20Chain | KnownChainId.RunesChain
   commitTx: Uint8Array
   revealTx: Uint8Array
@@ -23,18 +26,21 @@ export async function validateBridgeOrderFromMeta(info: {
   swapRoute?: SwapRouteViaALEX | SwapRouteViaEVMDexAggregator
 }): Promise<void> {
   const contractBaseCallInfo = getStacksContractCallInfo(
+    ctx,
     getChainIdNetworkType(info.chainId) === "mainnet"
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,
     StacksContractName.MetaPegInEndpoint,
   )
   const contractSwapCallInfo = getStacksContractCallInfo(
+    ctx,
     getChainIdNetworkType(info.chainId) === "mainnet"
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,
     StacksContractName.MetaPegInEndpointSwap,
   )
   const contractAggCallInfo = getStacksContractCallInfo(
+    ctx,
     getChainIdNetworkType(info.chainId) === "mainnet"
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,

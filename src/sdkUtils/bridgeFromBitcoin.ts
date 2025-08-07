@@ -586,7 +586,7 @@ async function broadcastBitcoinTransaction(
         )
       }
 
-      return validateBridgeOrderFromBitcoin({
+      return validateBridgeOrderFromBitcoin(sdkContext, {
         chainId: info.fromChain,
         commitTx: btcTx,
         revealTx,

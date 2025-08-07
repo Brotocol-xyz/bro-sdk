@@ -405,6 +405,7 @@ export async function getSpecialFeeDetailsForSwapRoute(
       if (!EVM_BARE_PEG_IN_USE_SWAP_CONTRACT) return
 
       const evmPegInContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.EVMPegInEndpointSwap,
       )
@@ -429,14 +430,17 @@ export async function getSpecialFeeDetailsForSwapRoute(
       )
     } else if (options.swapRoute.via === "ALEX") {
       const btcPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.BTCPegInEndpointSwap,
       )
       const metaPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.MetaPegInEndpointSwap,
       )
       const evmPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.EVMPegInEndpointSwap,
       )

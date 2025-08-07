@@ -346,6 +346,7 @@ const _getStacks2SolanaFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )

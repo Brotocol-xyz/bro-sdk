@@ -73,10 +73,12 @@ const _getEvm2StacksFeeInfo = async (
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = EVM_BARE_PEG_IN_USE_SWAP_CONTRACT
     ? getStacksContractCallInfo(
+        ctx,
         route.toChain,
         StacksContractName.EVMPegInEndpointSwap,
       )
     : getStacksContractCallInfo(
+        ctx,
         route.toChain,
         StacksContractName.EVMPegInEndpoint,
       )
@@ -192,6 +194,7 @@ const getEvm2StacksNativeBridgeFeeInfo = async (
   route: KnownRoute_FromEVM_ToStacks,
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.toChain,
     StacksContractName.EVMPegInEndpoint,
   )
@@ -297,10 +300,12 @@ const _getStacks2EvmFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksBaseContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )
   const stacksAggContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.EVMPegOutEndpointAggregator,
   )

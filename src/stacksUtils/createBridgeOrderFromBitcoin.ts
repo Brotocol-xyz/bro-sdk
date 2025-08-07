@@ -261,14 +261,17 @@ async function createBridgeOrderFromBitcoinImpl(
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet
   const contractBaseCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.BTCPegInEndpoint,
   )
   const contractSwapCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.BTCPegInEndpointSwap,
   )
   const contractAggCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.BTCPegInEndpointAggregator,
   )

@@ -829,6 +829,7 @@ export async function bridgeInfoFromBitcoin_toLaunchpad(
   const toToken = KnownTokenId.Stacks.aBTC
 
   const contractCallInfo = getStacksContractCallInfo(
+    ctx,
     toChain,
     StacksContractName.BTCPegInEndpointLaunchpad,
   )

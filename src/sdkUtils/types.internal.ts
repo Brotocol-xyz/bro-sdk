@@ -3,7 +3,10 @@ import { EVMOnChainConfigByEVMChain } from "../evmUtils/apiHelpers/getEVMOnChain
 import { EVMSupportedRoute } from "../evmUtils/apiHelpers/getEVMSupportedRoutes"
 import type { BRC20SupportedRoute } from "../metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import type { RunesSupportedRoute } from "../metaUtils/apiHelpers/getRunesSupportedRoutes"
-import { SolanaSupportedRoutesAndConfig, TokenConfigAccount } from "../solanaUtils/types"
+import {
+  SolanaSupportedRoutesAndConfig,
+  TokenConfigAccount,
+} from "../solanaUtils/types"
 import { StacksTokenInfo } from "../stacksUtils/apiHelpers/getAllStacksTokens"
 import { TronSupportedRoute } from "../tronUtils/types"
 import { DefinedRoute, KnownRoute } from "../utils/buildSupportedRoutes"
@@ -43,6 +46,7 @@ export interface SDKGlobalContext {
       KnownChainId.StacksChain,
       Promise<StacksTokenInfo[]>
     >
+    logReadonlyCalls?: boolean
   }
   btc: {
     ignoreValidateResult?: boolean

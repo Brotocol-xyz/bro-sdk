@@ -6,6 +6,7 @@ import {
 } from "../utils/SwapRouteHelpers"
 import { KnownChainId } from "../utils/types/knownIds"
 import { StacksContractAddress } from "../sdkUtils/types"
+import { SDKGlobalContext } from "../sdkUtils/types.internal"
 import { StacksContractName } from "./stxContractAddresses"
 import {
   executeReadonlyCallBro,
@@ -13,7 +14,9 @@ import {
 } from "./contractHelpers"
 import { checkNever } from "../utils/typeHelpers"
 
-export async function validateBridgeOrderFromBitcoin(info: {
+export async function validateBridgeOrderFromBitcoin(
+  ctx: SDKGlobalContext,
+  info: {
   chainId: KnownChainId.BitcoinChain
   commitTx: Uint8Array
   revealTx: Uint8Array
@@ -21,18 +24,21 @@ export async function validateBridgeOrderFromBitcoin(info: {
   swapRoute?: SwapRouteViaALEX | SwapRouteViaEVMDexAggregator
 }): Promise<void> {
   const contractBaseCallInfo = getStacksContractCallInfo(
+    ctx,
     info.chainId === KnownChainId.Bitcoin.Mainnet
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,
     StacksContractName.BTCPegInEndpoint,
   )
   const contractSwapCallInfo = getStacksContractCallInfo(
+    ctx,
     info.chainId === KnownChainId.Bitcoin.Mainnet
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,
     StacksContractName.BTCPegInEndpointSwap,
   )
   const contractAggCallInfo = getStacksContractCallInfo(
+    ctx,
     info.chainId === KnownChainId.Bitcoin.Mainnet
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet,

@@ -252,14 +252,17 @@ async function createBridgeOrderFromMetaImpl(
       ? KnownChainId.Stacks.Mainnet
       : KnownChainId.Stacks.Testnet
   const contractBaseCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.MetaPegInEndpoint,
   )
   const contractSwapCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.MetaPegInEndpointSwap,
   )
   const contractAggCallInfo = getStacksContractCallInfo(
+    sdkContext,
     transitStacksChain,
     StacksContractName.MetaPegInEndpointAggregator,
   )

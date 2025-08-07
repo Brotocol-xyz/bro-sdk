@@ -164,10 +164,12 @@ const getMeta2StacksSwapFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksSwapContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route1.toChain,
     StacksContractName.MetaPegInEndpointSwap,
   )
   const stacksAggContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route1.toChain,
     StacksContractName.MetaPegInEndpointAggregator,
   )
