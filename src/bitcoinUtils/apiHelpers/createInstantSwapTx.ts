@@ -6,6 +6,11 @@ import {
 } from "../../utils/errors"
 import { decodeHex, encodeZeroPrefixedHex } from "../../utils/hexHelpers"
 import { sleep } from "../../utils/promiseHelpers"
+import {
+  createIntervalSubscribable,
+  mergeSubscribables,
+  toAsyncIterable,
+} from "../../utils/Subscribable"
 import { checkNever } from "../../utils/typeHelpers"
 import { getChainIdNetworkType, KnownChainId } from "../../utils/types/knownIds"
 import { getTxId } from "../bitcoinHelpers"
@@ -15,6 +20,8 @@ import {
   InstantSwapOrderSerialized,
   serializeInstantSwapOrder,
 } from "./InstantSwapOrder"
+
+const MINIMUM_UPDATE_REQUEST_INTERVAL_MS = 1000
 
 enum InstantSwapJobStatus {
   Initialized = "initialized",
@@ -159,7 +166,9 @@ export async function createInstantSwapTx(
     psbt: info.psbt,
   })
 
-  while (true) {
+  const fetchUpdate = async (): Promise<
+    undefined | { txid: string; tx: Uint8Array }
+  > => {
     const jobs = await getJob(sdkContext, {
       network,
       jobId: createdJob.jobId,
@@ -168,8 +177,7 @@ export async function createInstantSwapTx(
     const job = jobs.jobs.find(job => job.jobId === createdJob.jobId)
 
     if (job == null || job.status === InstantSwapJobStatus.Initialized) {
-      await sleep(1000)
-      continue
+      return undefined
     }
 
     if (
@@ -202,5 +210,34 @@ export async function createInstantSwapTx(
     }
 
     checkNever(job)
+    return
   }
+
+  const intervalSubscribable = createIntervalSubscribable(5000)
+  const updateSubscribable =
+    sdkContext.instantSwap.getOrderUpdatedSignal == null
+      ? intervalSubscribable
+      : mergeSubscribables([
+          intervalSubscribable,
+          sdkContext.instantSwap.getOrderUpdatedSignal({
+            id: createdJob.jobId,
+          }),
+        ])
+
+  let lastTimeRequest = Date.now() - MINIMUM_UPDATE_REQUEST_INTERVAL_MS
+  for await (const _ of toAsyncIterable(updateSubscribable)) {
+    if (Date.now() - lastTimeRequest < MINIMUM_UPDATE_REQUEST_INTERVAL_MS) {
+      continue
+    }
+
+    lastTimeRequest = Date.now()
+
+    const update = await fetchUpdate()
+    if (update != null) {
+      return update
+    }
+  }
+
+  // unexpected branch
+  throw new Error("Failed to create instant swap transaction")
 }

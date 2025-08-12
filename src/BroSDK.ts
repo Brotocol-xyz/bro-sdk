@@ -3,40 +3,22 @@ import { getBTCPegInAddress } from "./bitcoinUtils/btcAddresses"
 import { isSupportedBitcoinRoute } from "./bitcoinUtils/peggingHelpers"
 import { nativeCurrencyAddress } from "./evmUtils/addressHelpers"
 import {
+  getEVMContractCallInfo,
+  getEVMToken,
+  getEVMTokenContractInfo,
+} from "./evmUtils/contractHelpers"
+import {
   defaultEvmClients,
   evmChainIdFromKnownChainId,
   evmChainIdToKnownChainId,
 } from "./evmUtils/evmClients"
 import { isSupportedEVMRoute } from "./evmUtils/peggingHelpers"
-import {
-  getEVMContractCallInfo,
-  getEVMToken,
-  getEVMTokenContractInfo,
-} from "./evmUtils/contractHelpers"
 import { getBRC20SupportedRoutes } from "./metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import { getRunesSupportedRoutes } from "./metaUtils/apiHelpers/getRunesSupportedRoutes"
 import {
   isSupportedBRC20Route,
   isSupportedRunesRoute,
 } from "./metaUtils/peggingHelpers"
-import { isSupportedStacksRoute } from "./stacksUtils/peggingHelpers"
-import {
-  getStacksToken,
-  getStacksTokenContractInfo,
-} from "./stacksUtils/contractHelpers"
-import { TooManyRequestsError } from "./utils/apiHelpers"
-import {
-  DefinedRoute,
-  GetSupportedRoutesFn_Conditions,
-  KnownRoute,
-} from "./utils/buildSupportedRoutes"
-import { detectPossibleRoutes } from "./utils/detectPossibleRoutes"
-import { TooFrequentlyError } from "./utils/errors"
-import {
-  KnownChainId,
-  KnownTokenId,
-  getChainIdNetworkType,
-} from "./utils/types/knownIds"
 import {
   BridgeFromBitcoinInput,
   BridgeFromBitcoinOutput,
@@ -57,6 +39,11 @@ import {
   BridgeFromRunesOutput,
   bridgeFromRunes,
 } from "./sdkUtils/bridgeFromRunes"
+import {
+  BridgeFromSolanaInput,
+  BridgeFromSolanaOutput,
+  bridgeFromSolana,
+} from "./sdkUtils/bridgeFromSolana"
 import {
   BridgeFromStacksInput,
   BridgeFromStacksOutput,
@@ -80,6 +67,11 @@ import {
   bridgeInfoFromBRC20,
   bridgeInfoFromRunes,
 } from "./sdkUtils/bridgeInfoFromMeta"
+import {
+  BridgeInfoFromSolanaInput,
+  BridgeInfoFromSolanaOutput,
+  bridgeInfoFromSolana,
+} from "./sdkUtils/bridgeInfoFromSolana"
 import {
   BridgeInfoFromStacksInput,
   BridgeInfoFromStacksOutput,
@@ -118,47 +110,57 @@ import {
   evmNativeCurrencyAddress,
 } from "./sdkUtils/types"
 import { SDKGlobalContext } from "./sdkUtils/types.internal"
-import { DumpableCache, getCacheInside } from "./utils/DumpableCache"
-import { isNotNull } from "./utils/typeHelpers"
-import { SwapRoute } from "./utils/SwapRouteHelpers"
-import { isSupportedTronRoute } from "./tronUtils/peggingHelpers"
-import { isSupportedSolanaRoute } from "./solanaUtils/peggingHelpers"
 import { getSolanaSupportedRoutes } from "./solanaUtils/getSolanaSupportedRoutes"
+import { isSupportedSolanaRoute } from "./solanaUtils/peggingHelpers"
 import { SolanaSupportedRoute } from "./solanaUtils/types"
+import {
+  getStacksToken,
+  getStacksTokenContractInfo,
+} from "./stacksUtils/contractHelpers"
+import { isSupportedStacksRoute } from "./stacksUtils/peggingHelpers"
 import { getTronSupportedRoutes } from "./tronUtils/getTronSupportedRoutes"
+import { isSupportedTronRoute } from "./tronUtils/peggingHelpers"
 import { TronSupportedRoute } from "./tronUtils/types"
+import { TooManyRequestsError } from "./utils/apiHelpers"
 import {
-  BridgeFromSolanaInput,
-  BridgeFromSolanaOutput,
-  bridgeFromSolana,
-} from "./sdkUtils/bridgeFromSolana"
-import {
-  BridgeInfoFromSolanaInput,
-  BridgeInfoFromSolanaOutput,
-  bridgeInfoFromSolana,
-} from "./sdkUtils/bridgeInfoFromSolana"
-
-export {
-  BridgeFromSolanaInput,
-  BridgeFromSolanaOutput,
-} from "./sdkUtils/bridgeFromSolana"
-
-export {
+  DefinedRoute,
   GetSupportedRoutesFn_Conditions,
   KnownRoute,
 } from "./utils/buildSupportedRoutes"
+import { detectPossibleRoutes } from "./utils/detectPossibleRoutes"
+import { DumpableCache, getCacheInside } from "./utils/DumpableCache"
+import { TooFrequentlyError } from "./utils/errors"
+import { Subscribable } from "./utils/Subscribable"
+import { SwapRoute } from "./utils/SwapRouteHelpers"
+import { isNotNull } from "./utils/typeHelpers"
+import {
+  KnownChainId,
+  KnownTokenId,
+  getChainIdNetworkType,
+} from "./utils/types/knownIds"
+
+export {
+  BridgeFromSolanaInput,
+  BridgeFromSolanaOutput,
+} from "./sdkUtils/bridgeFromSolana"
+
+export {
+  BridgeFromBitcoinInput_reselectSpendableUTXOs,
+  BridgeFromBitcoinInput_signPsbtFn,
+} from "./bitcoinUtils/types"
+export {
+  BridgeFromRunesInput_reselectSpendableNetworkFeeUTXOs,
+  BridgeFromRunesInput_signPsbtFn,
+  RunesUTXOSpendable,
+} from "./metaUtils/types"
 export {
   BridgeFromBitcoinInput,
   BridgeFromBitcoinOutput,
 } from "./sdkUtils/bridgeFromBitcoin"
 export {
-  BridgeFromBitcoinInput_signPsbtFn,
-  BridgeFromBitcoinInput_reselectSpendableUTXOs,
-} from "./bitcoinUtils/types"
-export {
   BridgeFromBRC20Input,
-  BridgeFromBRC20Input_signPsbtFn,
   BridgeFromBRC20Input_reselectSpendableNetworkFeeUTXOs,
+  BridgeFromBRC20Input_signPsbtFn,
   BridgeFromBRC20Output,
 } from "./sdkUtils/bridgeFromBRC20"
 export {
@@ -169,11 +171,6 @@ export {
   BridgeFromRunesInput,
   BridgeFromRunesOutput,
 } from "./sdkUtils/bridgeFromRunes"
-export {
-  BridgeFromRunesInput_signPsbtFn,
-  BridgeFromRunesInput_reselectSpendableNetworkFeeUTXOs,
-  RunesUTXOSpendable,
-} from "./metaUtils/types"
 export {
   BridgeFromStacksInput,
   BridgeFromStacksInput_ContractCallOptions,
@@ -216,6 +213,10 @@ export {
   GetTimeLockedAssetsInput,
   GetTimeLockedAssetsOutput,
 } from "./sdkUtils/timelockFromEVM"
+export {
+  GetSupportedRoutesFn_Conditions,
+  KnownRoute,
+} from "./utils/buildSupportedRoutes"
 export type { DumpableCache } from "./utils/DumpableCache"
 
 export interface BroSDKOptions {
@@ -223,6 +224,9 @@ export interface BroSDKOptions {
   __experimental?: {
     backendAPI?: {
       runtimeEnv?: "prod" | "dev"
+    }
+    instantSwap?: {
+      getOrderUpdatedSignal?: (info: { id: string }) => Subscribable<{}>
     }
     btc?: {
       ignoreValidateResult?: boolean
@@ -291,6 +295,10 @@ export class BroSDK {
       backendAPI: {
         ...options.__experimental?.backendAPI,
         runtimeEnv: options.__experimental?.backendAPI?.runtimeEnv ?? "prod",
+      },
+      instantSwap: {
+        getOrderUpdatedSignal:
+          options.__experimental?.instantSwap?.getOrderUpdatedSignal,
       },
       stacks: {
         tokensCache: new Map(),
@@ -1188,7 +1196,6 @@ export class BroSDK {
     return runesIdToRunesToken(this.sdkContext, chain, id)
   }
 
-  
   /**
    * Retrieves the `KnownTokenId.SolanaToken` associated with a given Solana token address
    * on a specific Solana blockchain.

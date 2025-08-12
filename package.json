@@ -54,7 +54,8 @@
     "docs:watch": "typedoc --watch",
     "build": "pnpm run gen && rm -rf lib && tsup-node src",
     "prepare": "pnpm run build",
-    "test": "vitest --exclude lib --run"
+    "test": "vitest --exclude lib --run",
+    "test:watch": "vitest --exclude lib"
   },
   "dependencies": {
     "@c4/btc-utils": "^0.3.1",

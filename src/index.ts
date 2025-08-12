@@ -1,6 +1,7 @@
 export * from "./BroSDK"
 export * from "./utils/errors"
 export * from "./bitcoinUtils/errors"
+export * from "./utils/Subscribable"
 export {
   ChainId,
   TokenId,
