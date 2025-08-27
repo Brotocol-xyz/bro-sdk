@@ -535,19 +535,12 @@ async function bridgeFromEVM_toSolana(
   }
 
   // i want the code below to typecheck
-  if (1 % 2 === 1) {
-    throw new Error(
-      `Not implemented, ${toTokenContractInfo.solanaTokenAddress} need new EVM messages`,
-    )
-  }
-
-  const message = await encodeFunctionData({
+  const message = encodeFunctionData({
     abi: sendMessageAbi,
-    functionName: "transferToEVM",
+    functionName: "transferToSolana",
     args: [
-      contractAssignedChainIdFromKnownChain(info.toChain),
-      toTokenContractInfo.solanaTokenAddress as `0x${string}`, // TODO: fix this
-      info.toAddress as EVMAddress,
+      toHex(addressToBuffer(info.toChain, info.toAddress)),
+      toHex(addressToBuffer(info.toChain, toTokenContractInfo.solanaTokenAddress)),
     ],
   })
   const functionData = await encodeFunctionData({
@@ -623,6 +616,12 @@ async function bridgeFromEVM_toMeta(
     toTokenCorrespondingStacksToken == null
       ? undefined
       : await getStacksTokenContractInfo(
+          ctx,
+          KnownChainId.isEVMMainnetChain(info.fromChain)
+            ? KnownChainId.Stacks.Mainnet
+            : KnownChainId.Stacks.Testnet,
+          toTokenCorrespondingStacksToken,
+        )
           ctx,
           KnownChainId.isEVMMainnetChain(info.fromChain)
             ? KnownChainId.Stacks.Mainnet

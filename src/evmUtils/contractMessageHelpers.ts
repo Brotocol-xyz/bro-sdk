@@ -7,4 +7,5 @@ export const sendMessageAbi = parseAbi([
   "function transferToBTC(bytes calldata btcAddress) pure returns (uint256)",
   "function transferToBRC20(bytes calldata btcAddress, string calldata destStacksTokenAddress) pure returns (uint256)",
   "function transferToRunes(bytes calldata btcAddress, string calldata destStacksTokenAddress) pure returns (uint256)",
+  "function transferToSolana(bytes calldata recipient, bytes calldata mint) pure returns (bytes)",
 ])

@@ -600,23 +600,21 @@ export const isSupportedEVMRoute: IsSupportedFn = async (ctx, route) => {
   if (KnownChainId.isSolanaChain(toChain)) {
     if (!KnownTokenId.isSolanaToken(toToken)) return false
 
-    // Waiting for backend support
-    return false
-    // const fromRoutes = await getEVMSupportedRoutes(ctx, fromChain)
-    // const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
+    const fromRoutes = await getEVMSupportedRoutes(ctx, fromChain)
+    const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
 
-    // return (
-    //   fromRoutes.some(
-    //     route =>
-    //       route.evmToken === fromToken &&
-    //       route.stacksToken === firstStepToStacksToken,
-    //   ) &&
-    //   toRoutes.some(
-    //     route =>
-    //       route.solanaToken === toToken &&
-    //       route.stacksToken === lastStepFromStacksToken,
-    //   )
-    // )
+    return (
+      fromRoutes.some(
+        route =>
+          route.evmToken === fromToken &&
+          route.stacksToken === firstStepToStacksToken,
+      ) &&
+      toRoutes.some(
+        route =>
+          route.solanaToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
+      )
+    )
   }
 
   checkNever(toChain)
