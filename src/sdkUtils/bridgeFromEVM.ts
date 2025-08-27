@@ -622,12 +622,6 @@ async function bridgeFromEVM_toMeta(
             : KnownChainId.Stacks.Testnet,
           toTokenCorrespondingStacksToken,
         )
-          ctx,
-          KnownChainId.isEVMMainnetChain(info.fromChain)
-            ? KnownChainId.Stacks.Mainnet
-            : KnownChainId.Stacks.Testnet,
-          toTokenCorrespondingStacksToken,
-        )
 
   if (
     bridgeEndpointAddress == null ||

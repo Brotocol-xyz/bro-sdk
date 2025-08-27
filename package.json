@@ -1,6 +1,6 @@
 {
   "name": "@brotocol-xyz/bro-sdk",
-  "version": "0.5.1-solana.41",
+  "version": "0.5.1-solana.43",
   "description": "Brotocol js SDK",
   "packageManager": "pnpm@9.9.0",
   "keywords": [

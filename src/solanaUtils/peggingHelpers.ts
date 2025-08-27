@@ -80,24 +80,21 @@ export const isSupportedSolanaRoute: IsSupportedFn = async (ctx, route) => {
   if (KnownChainId.isEVMChain(toChain)) {
     if (!KnownTokenId.isEVMToken(toToken)) return false
 
-    // Waiting for backend support
-    return false
+    const fromRoutes = await getSolanaSupportedRoutes(ctx, fromChain)
+    const toRoutes = await getEVMSupportedRoutes(ctx, toChain)
 
-    // const fromRoutes = await getSolanaSupportedRoutes(ctx, fromChain)
-    // const toRoutes = await getEVMSupportedRoutes(ctx, toChain)
-
-    // return (
-    //   fromRoutes.some(
-    //     route =>
-    //       route.solanaToken === fromToken &&
-    //       route.stacksToken === firstStepToStacksToken,
-    //   ) &&
-    //   toRoutes.some(
-    //     route =>
-    //       route.evmToken === toToken &&
-    //       route.stacksToken === lastStepFromStacksToken,
-    //   )
-    // )
+    return (
+      fromRoutes.some(
+        route =>
+          route.solanaToken === fromToken &&
+          route.stacksToken === firstStepToStacksToken,
+      ) &&
+      toRoutes.some(
+        route =>
+          route.evmToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
+      )
+    )
   }
 
   // solana -> btc
