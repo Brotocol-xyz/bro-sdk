@@ -38,8 +38,6 @@ import {
 } from "./types"
 import { SDKGlobalContext } from "./types.internal"
 import { contractAssignedChainIdFromKnownChain } from "../lowlevelUnstableInfos"
-import type { Transaction } from "@solana/web3.js"
-
 export type BridgeFromSolanaInput = {
   fromChain: ChainId
   toChain: ChainId
@@ -57,7 +55,11 @@ export type BridgeFromSolanaInput = {
   senderTokenAccount: string
   amount: SDKNumber
   sendTransaction: (tx: {
-    transaction: Transaction
+    /**
+     * The serialized transaction message bytes compiled from VersionedTransaction.
+     * This can be signed and sent using any Solana wallet adapter.
+     */
+    transaction: Uint8Array
   }) => Promise<{
     signature: string
   }>
@@ -241,7 +243,7 @@ async function bridgeFromSolana_toStacks(
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx
+    transaction: tx.serialize()
   })
 
   return {
@@ -311,7 +313,7 @@ async function bridgeFromSolana_toBitcoin(
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx
+    transaction: tx.serialize()
   })
 
   return {
@@ -380,7 +382,7 @@ async function bridgeFromSolana_toEVM(
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx
+    transaction: tx.serialize()
   })
 
   return {
@@ -479,7 +481,7 @@ async function bridgeFromSolana_toMeta(
 
   // Send the transaction
   const result = await info.sendTransaction({
-    transaction: tx
+    transaction: tx.serialize()
   })
 
   return {

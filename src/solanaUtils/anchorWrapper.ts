@@ -1,6 +1,6 @@
-import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { Buffer } from 'buffer';
 import { BigNumber } from "../utils/BigNumber";
 import { numberFromSolanaContractNumber, numberToSolanaContractNumber } from "./contractHelpers";
@@ -109,9 +109,9 @@ export class AnchorWrapper {
   /**
    * Creates a transaction for sending a message with token transfer/burn
    * @param params Parameters for the send message with token transaction
-   * @returns The transaction object (not broadcast)
+   * @returns The versioned transaction object (not broadcast)
    */
-  async createSendMessageWithTokenTx(params: SendMessageWithTokenParams): Promise<web3.Transaction> {
+  async createSendMessageWithTokenTx(params: SendMessageWithTokenParams): Promise<VersionedTransaction> {
     const {
       amount,
       payload,
@@ -167,8 +167,17 @@ export class AnchorWrapper {
       })
       .instruction();
 
-    // Create and return the transaction
-    const tx = new web3.Transaction().add(ix);
+    // Get latest blockhash for transaction
+    const { blockhash } = await this.getLatestBlockhash();
+
+    // Create versioned transaction
+    const message = new TransactionMessage({
+      payerKey: sender,
+      recentBlockhash: blockhash,
+      instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(message);
     return tx;
   }
 } 

@@ -1370,10 +1370,16 @@ export class BroSDK {
    * - `fromAddress: string` - The sender's address on the Solana network.
    * - `toAddress: string` - The recipient's address on the destination blockchain.
    * - `toAddressScriptPubKey?: Uint8Array` - Required when the destination is a Bitcoin-based chain.
+   * - `senderTokenAccount: string` - The token account that holds the tokens to be bridged.
    * - `amount: SDKNumber` - The amount of tokens to transfer.
    * - `sendTransaction` - Function to send the transaction on the Solana network.
+   *   - `@param tx` - The transaction parameter object.
+   *   - `@param tx.transaction` - `Uint8Array` - The serialized transaction message bytes
+   *     compiled from a Solana `VersionedTransaction`. This can be signed and sent using any Solana
+   *     wallet adapter (e.g., Phantom, Solflare) by deserializing and signing the transaction.
+   *   - `@returns` - `Promise<{ signature: string }>` - The transaction signature after broadcasting.
    *
-   * @returns A promise that resolves with the transaction hash (`txHash`) of the bridging operation.
+   * @returns A promise that resolves with the transaction signature of the bridging operation.
    *
    * @throws UnsupportedBridgeRouteError - If the provided route between the source and destination
    * chains or tokens is unsupported.
