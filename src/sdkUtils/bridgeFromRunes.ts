@@ -297,8 +297,7 @@ export async function bridgeFromRunes(
         })
       }
     } else {
-      assertExclude(route.toChain, assertExclude.i<KnownChainId.BitcoinChain>())
-      checkNever(route)
+      checkNever(route.toChain)
     }
   } else {
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.EVMChain>())

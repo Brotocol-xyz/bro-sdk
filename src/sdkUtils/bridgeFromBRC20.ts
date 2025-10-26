@@ -286,8 +286,7 @@ export async function bridgeFromBRC20(
         })
       }
     } else {
-      assertExclude(route.toChain, assertExclude.i<KnownChainId.BitcoinChain>())
-      checkNever(route)
+      checkNever(route.toChain)
     }
   } else {
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BitcoinChain>())
