@@ -1370,7 +1370,9 @@ export class BroSDK {
    * - `fromAddress: string` - The sender's address on the Solana network.
    * - `toAddress: string` - The recipient's address on the destination blockchain.
    * - `toAddressScriptPubKey?: Uint8Array` - Required when the destination is a Bitcoin-based chain.
-   * - `senderTokenAccount: string` - The token account that holds the tokens to be bridged.
+   * - `senderTokenAccount?: string` - (Optional) The token account that holds the tokens to be bridged.
+   *   If not provided, the Associated Token Account (ATA) will be derived automatically from the
+   *   sender's address and the token mint address.
    * - `amount: SDKNumber` - The amount of tokens to transfer.
    * - `sendTransaction` - Function to send the transaction on the Solana network.
    *   - `@param tx` - The transaction parameter object.

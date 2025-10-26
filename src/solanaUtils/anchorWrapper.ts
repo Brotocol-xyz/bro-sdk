@@ -24,7 +24,11 @@ export interface SendMessageWithTokenParams {
   amount: SDKNumber;
   payload: Uint8Array;
   sender: string;
-  senderTokenAccount: string;
+  /**
+   * The token account that holds the tokens to be sent.
+   * If not provided, the Associated Token Account (ATA) will be derived automatically.
+   */
+  senderTokenAccount?: string;
 }
 
 export class AnchorWrapper {
@@ -118,7 +122,14 @@ export class AnchorWrapper {
     } = params;
     const mint = new PublicKey(params.mint);
     const sender = new PublicKey(params.sender);
-    const senderTokenAccount = new PublicKey(params.senderTokenAccount);
+
+    // Get token program ID first to derive correct ATA
+    const tokenProgramId = await getTokenProgramId(this.provider.connection, mint);
+
+    // Use provided senderTokenAccount or derive ATA automatically
+    const senderTokenAccount = params.senderTokenAccount
+      ? new PublicKey(params.senderTokenAccount)
+      : getAssociatedTokenAddressSync(mint, sender, false, tokenProgramId);
 
     console.log(`Using mint: ${mint.toString()}`);
     console.log(`Sender: ${sender.toString()}`);
@@ -141,8 +152,6 @@ export class AnchorWrapper {
     const bridgeEndpoint = await this.endpointProgram.account.bridgeEndpoint.fetch(bridgeEndpointPda);
     const pegInAddress = bridgeEndpoint.pegInAddress;
     console.log(`Peg In Address: ${pegInAddress.toString()}`);
-
-    const tokenProgramId = await getTokenProgramId(this.provider.connection, mint);
     console.log(`Token program ID: ${tokenProgramId.toString()}`);
 
     // Get registry fee ATA

@@ -50,9 +50,10 @@ export type BridgeFromSolanaInput = {
    */
   toAddressScriptPubKey?: Uint8Array
   /**
-   * The token account that holds the tokens to be bridged
+   * The token account that holds the tokens to be bridged.
+   * If not provided, the Associated Token Account (ATA) will be used automatically.
    */
-  senderTokenAccount: string
+  senderTokenAccount?: string
   amount: SDKNumber
   sendTransaction: (tx: {
     /**
