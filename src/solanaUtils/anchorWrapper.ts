@@ -1,4 +1,3 @@
-import './solanaLibraryBufferFix';
 import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
 import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";

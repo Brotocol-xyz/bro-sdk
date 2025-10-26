@@ -9,4 +9,6 @@ export default defineConfig({
   env: {
     ENV_NAME: process.env.ENV_NAME ?? "prod",
   },
+  inject: ['./src/inject.ts'],
+  noExternal: ['@solana/spl-token']
 })
