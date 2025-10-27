@@ -1,26 +1,23 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
 import {
-  evmTokenToCorrespondingStacksToken,
-  getEvm2StacksFeeInfo,
-  getStacks2EvmFeeInfo,
-  isSupportedEVMRoute,
-} from "../evmUtils/peggingHelpers"
-import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
-import {
+  getSolana2StacksFeeInfo,
   getStacks2SolanaFeeInfo,
+  isSupportedSolanaRoute,
 } from "../solanaUtils/peggingHelpers"
+import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
+import { getStacks2EvmFeeInfo } from "../evmUtils/peggingHelpers"
 import { BigNumber } from "../utils/BigNumber"
 import { getAndCheckTransitStacksTokens } from "../utils/SwapRouteHelpers"
 import {
   checkRouteValid,
   KnownRoute,
-  KnownRoute_FromEVM_ToBitcoin,
-  KnownRoute_FromEVM_ToBRC20,
-  KnownRoute_FromEVM_ToEVM,
-  KnownRoute_FromEVM_ToRunes,
-  KnownRoute_FromEVM_ToSolana,
-  KnownRoute_FromEVM_ToStacks,
-  KnownRoute_FromEVM_ToTron,
+  KnownRoute_FromSolana_ToBitcoin,
+  KnownRoute_FromSolana_ToBRC20,
+  KnownRoute_FromSolana_ToEVM,
+  KnownRoute_FromSolana_ToRunes,
+  KnownRoute_FromSolana_ToSolana,
+  KnownRoute_FromSolana_ToStacks,
+  KnownRoute_FromSolana_ToTron,
   KnownRoute_FromStacks_ToBRC20,
   KnownRoute_FromStacks_ToRunes,
 } from "../utils/buildSupportedRoutes"
@@ -35,7 +32,7 @@ import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
 import { ChainId, SDKNumber, TokenId } from "./types"
 import { SDKGlobalContext } from "./types.internal"
 
-export interface BridgeInfoFromEVMInput {
+export interface BridgeInfoFromSolanaInput {
   fromChain: ChainId
   toChain: ChainId
   fromToken: TokenId
@@ -43,22 +40,22 @@ export interface BridgeInfoFromEVMInput {
   amount: SDKNumber
 }
 
-export interface BridgeInfoFromEVMOutput
+export interface BridgeInfoFromSolanaOutput
   extends PublicTransferProphetAggregated {}
 
-export async function bridgeInfoFromEVM(
+export async function bridgeInfoFromSolana(
   ctx: SDKGlobalContext,
-  info: BridgeInfoFromEVMInput,
-): Promise<BridgeInfoFromEVMOutput> {
-  const route = await checkRouteValid(ctx, isSupportedEVMRoute, info)
+  info: BridgeInfoFromSolanaInput,
+): Promise<BridgeInfoFromSolanaOutput> {
+  const route = await checkRouteValid(ctx, isSupportedSolanaRoute, info)
 
-  if (KnownChainId.isEVMChain(route.fromChain)) {
+  if (KnownChainId.isSolanaChain(route.fromChain)) {
     if (KnownChainId.isStacksChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isStacksToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toStacks(ctx, {
+        return bridgeInfoFromSolana_toStacks(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -68,10 +65,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isBitcoinChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isBitcoinToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toBitcoin(ctx, {
+        return bridgeInfoFromSolana_toBitcoin(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -81,10 +78,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isEVMChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isEVMToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toEVM(ctx, {
+        return bridgeInfoFromSolana_toEVM(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -94,10 +91,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isBRC20Chain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isBRC20Token(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toMeta(ctx, {
+        return bridgeInfoFromSolana_toMeta(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -107,10 +104,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isRunesChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isRunesToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toMeta(ctx, {
+        return bridgeInfoFromSolana_toMeta(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -120,10 +117,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isSolanaChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isSolanaToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toSolana(ctx, {
+        return bridgeInfoFromSolana_toSolana(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -133,10 +130,10 @@ export async function bridgeInfoFromEVM(
       }
     } else if (KnownChainId.isTronChain(route.toChain)) {
       if (
-        KnownTokenId.isEVMToken(route.fromToken) &&
+        KnownTokenId.isSolanaToken(route.fromToken) &&
         KnownTokenId.isTronToken(route.toToken)
       ) {
-        return bridgeInfoFromEVM_toTron(ctx, {
+        return bridgeInfoFromSolana_toTron(ctx, {
           ...info,
           fromChain: route.fromChain,
           toChain: route.toChain,
@@ -153,7 +150,7 @@ export async function bridgeInfoFromEVM(
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.BRC20Chain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.RunesChain>())
     assertExclude(route.fromChain, assertExclude.i<KnownChainId.TronChain>())
-    assertExclude(route.fromChain, assertExclude.i<KnownChainId.SolanaChain>())
+    assertExclude(route.fromChain, assertExclude.i<KnownChainId.EVMChain>())
     checkNever(route)
   }
 
@@ -165,15 +162,15 @@ export async function bridgeInfoFromEVM(
   )
 }
 
-async function bridgeInfoFromEVM_toStacks(
+async function bridgeInfoFromSolana_toStacks(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    KnownRoute_FromEVM_ToStacks,
-): Promise<BridgeInfoFromEVMOutput> {
-  const step1 = await getEvm2StacksFeeInfo(ctx, info)
+    KnownRoute_FromSolana_ToStacks,
+): Promise<BridgeInfoFromSolanaOutput> {
+  const step1 = await getSolana2StacksFeeInfo(ctx, info)
   if (step1 == null) {
     throw new UnsupportedBridgeRouteError(
       info.fromChain,
@@ -189,15 +186,15 @@ async function bridgeInfoFromEVM_toStacks(
   }
 }
 
-async function bridgeInfoFromEVM_toBitcoin(
+async function bridgeInfoFromSolana_toBitcoin(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    KnownRoute_FromEVM_ToBitcoin,
-): Promise<BridgeInfoFromEVMOutput> {
-  const transitStacksChain = KnownChainId.isEVMMainnetChain(info.fromChain)
+    KnownRoute_FromSolana_ToBitcoin,
+): Promise<BridgeInfoFromSolanaOutput> {
+  const transitStacksChain = KnownChainId.isSolanaChain(info.fromChain)
     ? KnownChainId.Stacks.Mainnet
     : KnownChainId.Stacks.Testnet
 
@@ -231,7 +228,7 @@ async function bridgeInfoFromEVM_toBitcoin(
   }
 
   const [step1, step2] = await Promise.all([
-    getEvm2StacksFeeInfo(ctx, step1Route),
+    getSolana2StacksFeeInfo(ctx, step1Route),
     getStacks2BtcFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
       swapRoute: null,
@@ -254,15 +251,15 @@ async function bridgeInfoFromEVM_toBitcoin(
   )
 }
 
-async function bridgeInfoFromEVM_toEVM(
+async function bridgeInfoFromSolana_toEVM(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    KnownRoute_FromEVM_ToEVM,
-): Promise<BridgeInfoFromEVMOutput> {
-  const transitStacksChain = KnownChainId.isEVMMainnetChain(info.fromChain)
+    KnownRoute_FromSolana_ToEVM,
+): Promise<BridgeInfoFromSolanaOutput> {
+  const transitStacksChain = KnownChainId.isSolanaChain(info.fromChain)
     ? KnownChainId.Stacks.Mainnet
     : KnownChainId.Stacks.Testnet
 
@@ -296,7 +293,7 @@ async function bridgeInfoFromEVM_toEVM(
   }
 
   const [step1, step2] = await Promise.all([
-    getEvm2StacksFeeInfo(ctx, step1Route),
+    getSolana2StacksFeeInfo(ctx, step1Route),
     getStacks2EvmFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
       toDexAggregator: false,
@@ -319,15 +316,15 @@ async function bridgeInfoFromEVM_toEVM(
   )
 }
 
-async function bridgeInfoFromEVM_toMeta(
+async function bridgeInfoFromSolana_toMeta(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    (KnownRoute_FromEVM_ToBRC20 | KnownRoute_FromEVM_ToRunes),
-): Promise<BridgeInfoFromEVMOutput> {
-  const transitStacksChain = KnownChainId.isEVMMainnetChain(info.fromChain)
+    (KnownRoute_FromSolana_ToBRC20 | KnownRoute_FromSolana_ToRunes),
+): Promise<BridgeInfoFromSolanaOutput> {
+  const transitStacksChain = KnownChainId.isSolanaChain(info.fromChain)
     ? KnownChainId.Stacks.Mainnet
     : KnownChainId.Stacks.Testnet
 
@@ -363,7 +360,7 @@ async function bridgeInfoFromEVM_toMeta(
   }
 
   const [step1, step2] = await Promise.all([
-    getEvm2StacksFeeInfo(ctx, step1Route),
+    getSolana2StacksFeeInfo(ctx, step1Route),
     getStacks2MetaFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
       swapRoute: null,
@@ -386,15 +383,15 @@ async function bridgeInfoFromEVM_toMeta(
   )
 }
 
-async function bridgeInfoFromEVM_toSolana(
+async function bridgeInfoFromSolana_toSolana(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    KnownRoute_FromEVM_ToSolana,
-): Promise<BridgeInfoFromEVMOutput> {
-  const transitStacksChain = KnownChainId.isEVMMainnetChain(info.fromChain)
+    KnownRoute_FromSolana_ToSolana,
+): Promise<BridgeInfoFromSolanaOutput> {
+  const transitStacksChain = KnownChainId.isSolanaChain(info.fromChain)
     ? KnownChainId.Stacks.Mainnet
     : KnownChainId.Stacks.Testnet
 
@@ -428,7 +425,7 @@ async function bridgeInfoFromEVM_toSolana(
   }
 
   const [step1, step2] = await Promise.all([
-    getEvm2StacksFeeInfo(ctx, step1Route),
+    getSolana2StacksFeeInfo(ctx, step1Route),
     getStacks2SolanaFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
     }),
@@ -450,46 +447,13 @@ async function bridgeInfoFromEVM_toSolana(
   )
 }
 
-async function bridgeInfoFromEVM_toTron(
+async function bridgeInfoFromSolana_toTron(
   ctx: SDKGlobalContext,
   info: Omit<
-    BridgeInfoFromEVMInput,
+    BridgeInfoFromSolanaInput,
     "fromChain" | "toChain" | "fromToken" | "toToken"
   > &
-    KnownRoute_FromEVM_ToTron,
-): Promise<BridgeInfoFromEVMOutput> {
+    KnownRoute_FromSolana_ToTron,
+): Promise<BridgeInfoFromSolanaOutput> {
   throw new Error("WIP")
-}
-
-export async function bridgeInfoFromEVM_toLaunchpad(
-  ctx: SDKGlobalContext,
-  info: {
-    fromChain: KnownChainId.EVMChain
-    fromToken: KnownTokenId.EVMToken
-    launchId: SDKNumber
-    amount: SDKNumber
-  },
-): Promise<BridgeInfoFromEVMOutput> {
-  const toChain = KnownChainId.isEVMMainnetChain(info.fromChain)
-    ? KnownChainId.Stacks.Mainnet
-    : KnownChainId.Stacks.Testnet
-  const toToken = await evmTokenToCorrespondingStacksToken(
-    ctx,
-    info.fromChain,
-    info.fromToken,
-  )
-
-  if (toToken == null) {
-    throw new UnsupportedBridgeRouteError(
-      info.fromChain,
-      toChain,
-      info.fromToken,
-    )
-  }
-
-  return bridgeInfoFromEVM_toStacks(ctx, {
-    ...info,
-    toChain,
-    toToken,
-  })
-}
+} 

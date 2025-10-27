@@ -14,6 +14,14 @@ import {
   metaTokenFromCorrespondingStacksToken,
   metaTokenToCorrespondingStacksToken,
 } from "./metaUtils/peggingHelpers"
+import {
+  tronTokenToCorrespondingStacksToken,
+  tronTokenFromCorrespondingStacksToken,
+} from "./tronUtils/peggingHelpers"
+import {
+  solanaTokenToCorrespondingStacksToken,
+  solanaTokenFromCorrespondingStacksToken,
+} from "./solanaUtils/peggingHelpers"
 import { KnownChainId, KnownTokenId } from "./utils/types/knownIds"
 import { StacksContractAddress } from "./sdkUtils/types"
 import { SDKGlobalContext } from "./sdkUtils/types.internal"
@@ -192,4 +200,36 @@ export const metaTokenToStacksToken = async (
     },
   )
   return { stacksTokens: stacksTokens == null ? [] : [stacksTokens] }
+}
+
+export const tronTokenToStacksToken = async (
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.TronChain,
+  token: KnownTokenId.TronToken,
+): Promise<undefined | KnownTokenId.StacksToken> => {
+  return tronTokenToCorrespondingStacksToken(getSDKContext(sdk), chain, token)
+}
+
+export const stacksTokenToTronTokens = async (
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.TronChain,
+  token: KnownTokenId.StacksToken,
+): Promise<KnownTokenId.TronToken[]> => {
+  return tronTokenFromCorrespondingStacksToken(getSDKContext(sdk), chain, token)
+}
+
+export const solanaTokenToStacksToken = async (
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.SolanaChain,
+  token: KnownTokenId.SolanaToken,
+): Promise<undefined | KnownTokenId.StacksToken> => {
+  return solanaTokenToCorrespondingStacksToken(getSDKContext(sdk), chain, token)
+}
+
+export const stacksTokenToSolanaTokens = async (
+  sdk: import("./BroSDK").BroSDK,
+  chain: KnownChainId.SolanaChain,
+  token: KnownTokenId.StacksToken,
+): Promise<KnownTokenId.SolanaToken[]> => {
+  return solanaTokenFromCorrespondingStacksToken(getSDKContext(sdk), chain, token)
 }

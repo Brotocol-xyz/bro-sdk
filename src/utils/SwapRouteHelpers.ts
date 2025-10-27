@@ -3,6 +3,7 @@ import { evmTokenToCorrespondingStacksToken } from "../evmUtils/peggingHelpers"
 import { metaTokenToCorrespondingStacksToken } from "../metaUtils/peggingHelpers"
 import { SDKNumber, StacksContractAddress } from "../sdkUtils/types"
 import { SDKGlobalContext } from "../sdkUtils/types.internal"
+import { solanaTokenToCorrespondingStacksToken } from "../solanaUtils/peggingHelpers"
 import {
   executeReadonlyCallBro,
   getStacksContractCallInfo,
@@ -10,6 +11,7 @@ import {
   numberFromStacksContractNumber,
 } from "../stacksUtils/contractHelpers"
 import { StacksContractName } from "../stacksUtils/stxContractAddresses"
+import { tronTokenToCorrespondingStacksToken } from "../tronUtils/peggingHelpers"
 import { last } from "./arrayHelpers"
 import { BigNumber } from "./BigNumber"
 import {
@@ -277,6 +279,20 @@ async function toCorrespondingStacksChain(
     return KnownChainId.Stacks.Testnet
   }
 
+  if (chain === KnownChainId.Tron.Mainnet) {
+    return KnownChainId.Stacks.Mainnet
+  }
+  if (chain === KnownChainId.Tron.Testnet) {
+    return KnownChainId.Stacks.Testnet
+  }
+
+  if (chain === KnownChainId.Solana.Mainnet) {
+    return KnownChainId.Stacks.Mainnet
+  }
+  if (chain === KnownChainId.Solana.Testnet) {
+    return KnownChainId.Stacks.Testnet
+  }
+
   checkNever(chain)
   return undefined
 }
@@ -319,6 +335,22 @@ export async function toCorrespondingStacksToken(
   } else if (KnownChainId.isStacksChain(chain)) {
     if (KnownTokenId.isStacksToken(token)) {
       toStacksTokenPromise = Promise.resolve(token)
+    }
+  } else if (KnownChainId.isTronChain(chain)) {
+    if (KnownTokenId.isTronToken(token)) {
+      toStacksTokenPromise = tronTokenToCorrespondingStacksToken(
+        ctx,
+        chain,
+        token,
+      )
+    }
+  } else if (KnownChainId.isSolanaChain(chain)) {
+    if (KnownTokenId.isSolanaToken(token)) {
+      toStacksTokenPromise = solanaTokenToCorrespondingStacksToken(
+        ctx,
+        chain,
+        token,
+      )
     }
   } else {
     checkNever(chain)
@@ -373,6 +405,7 @@ export async function getSpecialFeeDetailsForSwapRoute(
       if (!EVM_BARE_PEG_IN_USE_SWAP_CONTRACT) return
 
       const evmPegInContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.EVMPegInEndpointSwap,
       )
@@ -397,14 +430,17 @@ export async function getSpecialFeeDetailsForSwapRoute(
       )
     } else if (options.swapRoute.via === "ALEX") {
       const btcPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.BTCPegInEndpointSwap,
       )
       const metaPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.MetaPegInEndpointSwap,
       )
       const evmPegInSwapContractCallInfo = getStacksContractCallInfo(
+        ctx,
         route.fromChain,
         StacksContractName.EVMPegInEndpointSwap,
       )
@@ -518,6 +554,10 @@ export async function getSpecialFeeDetailsForSwapRoute(
         )
       } else if (KnownChainId.isEVMChain(route.toChain)) {
         minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
+      } else if (KnownChainId.isSolanaChain(route.toChain)) {
+        minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
+      } else if (KnownChainId.isTronChain(route.toChain)) {
+        minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
       } else {
         checkNever(route.toChain)
       }
@@ -554,6 +594,10 @@ export async function getSpecialFeeDetailsForSwapRoute(
         )
       } else if (KnownChainId.isEVMChain(route.toChain)) {
         minFeeAmount = context.fromMeta.getFixedFeeAmount()
+      } else if (KnownChainId.isSolanaChain(route.toChain)) {
+        minFeeAmount = context.fromMeta.getFixedFeeAmount()
+      } else if (KnownChainId.isTronChain(route.toChain)) {
+        minFeeAmount = context.fromMeta.getFixedFeeAmount()
       } else {
         checkNever(route.toChain)
       }
@@ -587,6 +631,10 @@ export async function getSpecialFeeDetailsForSwapRoute(
         )
       } else if (KnownChainId.isEVMChain(route.toChain)) {
         minFeeAmount = context.fromEVM.getFixedFeeAmount()
+      } else if (KnownChainId.isSolanaChain(route.toChain)) {
+        minFeeAmount = context.fromEVM.getFixedFeeAmount()
+      } else if (KnownChainId.isTronChain(route.toChain)) {
+        minFeeAmount = context.fromEVM.getFixedFeeAmount()
       } else {
         checkNever(route.toChain)
       }
@@ -596,6 +644,12 @@ export async function getSpecialFeeDetailsForSwapRoute(
         minFeeAmount,
         gasFee,
       })
+    } else if (KnownChainId.isSolanaChain(options.initialRoute.fromChain)) {
+      // Solana swap route fee handling not yet implemented
+      return
+    } else if (KnownChainId.isTronChain(options.initialRoute.fromChain)) {
+      // Tron swap route fee handling not yet implemented
+      return
     } else {
       checkNever(options.initialRoute.fromChain)
     }

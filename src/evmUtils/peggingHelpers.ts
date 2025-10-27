@@ -54,6 +54,8 @@ import {
   getEVMTokenContractInfo,
   numberFromSolidityContractNumber,
 } from "./contractHelpers"
+import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
+import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
 
 export const getEvm2StacksFeeInfo = async (
   ctx: SDKGlobalContext,
@@ -71,10 +73,12 @@ const _getEvm2StacksFeeInfo = async (
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = EVM_BARE_PEG_IN_USE_SWAP_CONTRACT
     ? getStacksContractCallInfo(
+        ctx,
         route.toChain,
         StacksContractName.EVMPegInEndpointSwap,
       )
     : getStacksContractCallInfo(
+        ctx,
         route.toChain,
         StacksContractName.EVMPegInEndpoint,
       )
@@ -190,6 +194,7 @@ const getEvm2StacksNativeBridgeFeeInfo = async (
   route: KnownRoute_FromEVM_ToStacks,
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.toChain,
     StacksContractName.EVMPegInEndpoint,
   )
@@ -295,10 +300,12 @@ const _getStacks2EvmFeeInfo = async (
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksBaseContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.EVMPegOutEndpoint,
   )
   const stacksAggContractCallInfo = getStacksContractCallInfo(
+    ctx,
     route.fromChain,
     StacksContractName.EVMPegOutEndpointAggregator,
   )
@@ -564,6 +571,48 @@ export const isSupportedEVMRoute: IsSupportedFn = async (ctx, route) => {
         route =>
           route.stacksToken === lastStepFromStacksToken &&
           route.runesToken === toToken,
+      )
+    )
+  }
+
+  // evm -> tron
+  if (KnownChainId.isTronChain(toChain)) {
+    if (!KnownTokenId.isTronToken(toToken)) return false
+
+    const fromRoutes = await getEVMSupportedRoutes(ctx, fromChain)
+    const toRoutes = await getTronSupportedRoutes(ctx, toChain)
+
+    return (
+      fromRoutes.some(
+        route =>
+          route.evmToken === fromToken &&
+          route.stacksToken === firstStepToStacksToken,
+      ) &&
+      toRoutes.some(
+        route =>
+          route.tronToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
+      )
+    )
+  }
+
+  // evm -> solana
+  if (KnownChainId.isSolanaChain(toChain)) {
+    if (!KnownTokenId.isSolanaToken(toToken)) return false
+
+    const fromRoutes = await getEVMSupportedRoutes(ctx, fromChain)
+    const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
+
+    return (
+      fromRoutes.some(
+        route =>
+          route.evmToken === fromToken &&
+          route.stacksToken === firstStepToStacksToken,
+      ) &&
+      toRoutes.some(
+        route =>
+          route.solanaToken === toToken &&
+          route.stacksToken === lastStepFromStacksToken,
       )
     )
   }
