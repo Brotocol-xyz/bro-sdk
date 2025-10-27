@@ -36,6 +36,7 @@ export function contractAssignedChainIdFromKnownChain(
       return 5n
     case KnownChainId.EVM.Bitlayer:
     case KnownChainId.EVM.BitboyTestnet:
+    case KnownChainId.Solana.Testnet:
       return 6n
     case KnownChainId.EVM.Lorenzo:
     case KnownChainId.EVM.BeraTestnet:
@@ -64,8 +65,6 @@ export function contractAssignedChainIdFromKnownChain(
       return 18n
     case KnownChainId.Solana.Mainnet:
       return 19n
-    case KnownChainId.Solana.Testnet:
-      return 6n // for testing
     case KnownChainId.Tron.Mainnet:
     case KnownChainId.Tron.Testnet:
       return 20n
