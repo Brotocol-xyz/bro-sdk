@@ -555,10 +555,8 @@ export async function getSpecialFeeDetailsForSwapRoute(
       } else if (KnownChainId.isEVMChain(route.toChain)) {
         minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
       } else if (KnownChainId.isSolanaChain(route.toChain)) {
-        // Solana fee handling not yet implemented
         minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
       } else if (KnownChainId.isTronChain(route.toChain)) {
-        // Tron fee handling not yet implemented
         minFeeAmount = context.fromBitcoin.getFixedFeeAmount()
       } else {
         checkNever(route.toChain)
