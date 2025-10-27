@@ -586,8 +586,11 @@ async function bridgeFromEVM_toTron(
   > &
     KnownRoute_FromEVM_ToTron,
 ): Promise<BridgeFromEVMOutput> {
-  throw new Error(
-    `Not implemented, ${info.toToken} EVM to TRON need contract update`,
+  throw new UnsupportedBridgeRouteError(
+    info.fromChain,
+    info.toChain,
+    info.fromToken,
+    info.toToken,
   )
 }
 
