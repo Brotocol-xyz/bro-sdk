@@ -1,46 +1,56 @@
+import { serializeCVBytes } from "@stacks/transactions"
+import bs58check from "bs58check"
 import { unwrapResponse } from "clarity-codegen"
+import { encodeInstantSwapOrderData } from "../bitcoinUtils/apiHelpers/InstantSwapOrder"
 import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressEVM } from "../evmUtils/peggingHelpers"
+import { EVMAddress, isEVMAddress } from "../sdkUtils/types"
+import { SDKGlobalContext } from "../sdkUtils/types.internal"
 import { getTerminatingStacksTokenContractAddress as getTerminatingStacksTokenContractAddressSolana } from "../solanaUtils/peggingHelpers"
 import { addressToBuffer } from "../utils/addressHelpers"
+import { BigNumber } from "../utils/BigNumber"
 import {
   KnownRoute_FromMeta,
   KnownRoute_FromMeta_ToBitcoin,
   KnownRoute_FromMeta_ToEVM,
   KnownRoute_FromMeta_ToMeta,
-  KnownRoute_FromMeta_ToStacks,
   KnownRoute_FromMeta_ToSolana,
+  KnownRoute_FromMeta_ToStacks,
   KnownRoute_FromMeta_ToTron,
 } from "../utils/buildSupportedRoutes"
-import { UnsupportedBridgeRouteError } from "../utils/errors"
+import {
+  InvalidMethodParametersError,
+  UnsupportedBridgeRouteError,
+} from "../utils/errors"
 import { decodeHex } from "../utils/hexHelpers"
 import {
   SwapRoute_WithMinimumAmountsToReceive,
   toCorrespondingStacksToken,
 } from "../utils/SwapRouteHelpers"
+import { tokenIdToBuffer } from "../utils/tokenIdHelpers"
 import { assertExclude, checkNever } from "../utils/typeHelpers"
 import {
+  _knownChainIdToErrorMessagePart,
   getChainIdNetworkType,
   KnownChainId,
   KnownTokenId,
 } from "../utils/types/knownIds"
-import { EVMAddress } from "../sdkUtils/types"
-import { SDKGlobalContext } from "../sdkUtils/types.internal"
-import { CreateBridgeOrderResult } from "./createBridgeOrderFromBitcoin"
-import { contractAssignedChainIdFromKnownChain } from "./crossContractDataMapping"
-import { StacksContractName } from "./stxContractAddresses"
 import {
   executeReadonlyCallBro,
   getStacksContractCallInfo,
   getStacksTokenContractInfo,
   numberToStacksContractNumber,
 } from "./contractHelpers"
-import { isEVMAddress } from "../sdkUtils/types"
-import bs58check from "bs58check"
+import { CreateBridgeOrderResult } from "./createBridgeOrderFromBitcoin"
+import { contractAssignedChainIdFromKnownChain } from "./crossContractDataMapping"
+import { StacksContractName } from "./stxContractAddresses"
+
+export const fakeFromAmountForBRC20 = BigNumber.from(Math.random())
 
 export async function createBridgeOrderFromMeta(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta & {
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toBitcoinScriptPubKey: Uint8Array
     toAddress: string
     swap?: SwapRoute_WithMinimumAmountsToReceive
@@ -50,6 +60,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isStacksToken(info.toToken)) {
       return createBridgeOrder_MetaToStacks(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toStacksAddress: info.toAddress,
@@ -62,6 +73,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isEVMToken(info.toToken) && isEVMAddress(info.toAddress)) {
       return createBridgeOrder_MetaToEVM(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toEVMAddress: info.toAddress,
@@ -74,6 +86,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isSolanaToken(info.toToken)) {
       return createBridgeOrder_MetaToSolana(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toSolanaAddress: info.toAddress,
@@ -86,6 +99,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isTronToken(info.toToken)) {
       return createBridgeOrder_MetaToTron(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toTronAddress: info.toAddress,
@@ -98,6 +112,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isBitcoinToken(info.toToken)) {
       return createBridgeOrder_MetaToBitcoin(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toBitcoinScriptPubKey: info.toBitcoinScriptPubKey,
@@ -110,6 +125,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isBRC20Token(info.toToken)) {
       return createBridgeOrder_MetaToMeta(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toBitcoinScriptPubKey: info.toBitcoinScriptPubKey,
@@ -122,6 +138,7 @@ export async function createBridgeOrderFromMeta(
     if (KnownTokenId.isRunesToken(info.toToken)) {
       return createBridgeOrder_MetaToMeta(sdkContext, {
         ...info,
+        methodName: "createBridgeOrderFromMeta",
         toChain: info.toChain,
         toToken: info.toToken,
         toBitcoinScriptPubKey: info.toBitcoinScriptPubKey,
@@ -142,7 +159,9 @@ export async function createBridgeOrderFromMeta(
 export async function createBridgeOrder_MetaToStacks(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToStacks & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toStacksAddress: string
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -167,7 +186,9 @@ export async function createBridgeOrder_MetaToStacks(
 export async function createBridgeOrder_MetaToEVM(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToEVM & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toEVMAddress: EVMAddress
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -182,7 +203,9 @@ export async function createBridgeOrder_MetaToEVM(
 export async function createBridgeOrder_MetaToBitcoin(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToBitcoin & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toBitcoinScriptPubKey: Uint8Array
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -197,7 +220,9 @@ export async function createBridgeOrder_MetaToBitcoin(
 export async function createBridgeOrder_MetaToMeta(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToMeta & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toBitcoinScriptPubKey: Uint8Array
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -212,7 +237,9 @@ export async function createBridgeOrder_MetaToMeta(
 export async function createBridgeOrder_MetaToSolana(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToSolana & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toSolanaAddress: string
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -227,7 +254,9 @@ export async function createBridgeOrder_MetaToSolana(
 export async function createBridgeOrder_MetaToTron(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta_ToTron & {
+    methodName: string
     fromBitcoinScriptPubKey: Uint8Array
+    fromAmount: BigNumber
     toTronAddress: string
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
@@ -242,8 +271,10 @@ export async function createBridgeOrder_MetaToTron(
 async function createBridgeOrderFromMetaImpl(
   sdkContext: SDKGlobalContext,
   info: KnownRoute_FromMeta & {
+    methodName: string
     fromAddressBuffer: Uint8Array
     toAddressBuffer: Uint8Array
+    fromAmount: BigNumber
     swap?: SwapRoute_WithMinimumAmountsToReceive
   },
 ): Promise<undefined | CreateBridgeOrderResult> {
@@ -327,13 +358,13 @@ async function createBridgeOrderFromMetaImpl(
           evmToken: info.toToken,
         })
       : KnownChainId.isSolanaChain(info.toChain) &&
-        KnownTokenId.isSolanaToken(info.toToken)
-      ? await getTerminatingStacksTokenContractAddressSolana(sdkContext, {
-          stacksChain: transitStacksChain,
-          solanaChain: info.toChain,
-          solanaToken: info.toToken,
-        })
-      : undefined) ?? bridgedToStacksTokenAddress
+          KnownTokenId.isSolanaToken(info.toToken)
+        ? await getTerminatingStacksTokenContractAddressSolana(sdkContext, {
+            stacksChain: transitStacksChain,
+            solanaChain: info.toChain,
+            solanaToken: info.toToken,
+          })
+        : undefined) ?? bridgedToStacksTokenAddress
 
   let data: undefined | Uint8Array
   if (swapInfo == null) {
@@ -418,6 +449,53 @@ async function createBridgeOrderFromMetaImpl(
       },
       contractAggCallInfo.executeOptions,
     ).then(unwrapResponse)
+  } else if (swapInfo.via === "instantSwap") {
+    if (
+      KnownChainId.isRunesChain(info.fromChain) &&
+      (KnownChainId.isBitcoinChain(info.toChain) ||
+        KnownChainId.isRunesChain(info.toChain))
+    ) {
+      if (info.fromAmount == null) {
+        throw new InvalidMethodParametersError(
+          [
+            `${info.methodName} (to ${_knownChainIdToErrorMessagePart(info.toChain)})`,
+          ],
+          [
+            {
+              name: "fromAmount",
+              expected: "BigNumber",
+              received: "undefined",
+            },
+          ],
+        )
+      }
+
+      const fromToken = await tokenIdToBuffer(
+        sdkContext,
+        info.fromChain,
+        info.fromToken,
+      )
+      const toToken = await tokenIdToBuffer(
+        sdkContext,
+        info.toChain,
+        info.toToken,
+      )
+      if (fromToken == null || toToken == null) return
+
+      const orderData = await encodeInstantSwapOrderData(transitStacksChain, {
+        fromChain: info.fromChain,
+        fromAddress: info.fromAddressBuffer,
+        fromToken,
+        fromAmount: info.fromAmount,
+        toChain: info.toChain,
+        toAddress: info.toAddressBuffer,
+        toToken,
+        toAmount: swapInfo.minimumAmountsToReceive,
+      })
+      if (orderData == null) return
+
+      data = serializeCVBytes(orderData)
+    }
   } else {
     checkNever(swapInfo)
     throw new UnsupportedBridgeRouteError(

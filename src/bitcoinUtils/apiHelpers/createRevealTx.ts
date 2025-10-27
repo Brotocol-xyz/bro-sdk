@@ -29,7 +29,7 @@ export async function createRevealTx(
       fromChain: info.fromChain,
       txId: info.txId,
       vout: info.vout,
-      satsAmount: info.satsAmount,
+      satsAmount: info.satsAmount.toString(),
       orderDataHex: toHex(info.orderData),
       xlinkPegInAddress: {
         address: info.pegInAddress.address,

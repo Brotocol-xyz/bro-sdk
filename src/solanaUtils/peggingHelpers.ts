@@ -301,6 +301,7 @@ const _getSolana2StacksFeeInfo = async (
   const transferProphet: TransferProphet = {
     isPaused: false,
     bridgeToken: route.fromToken,
+    reserveAmount: null,
     minBridgeAmount: tokenConfig.minAmount,
     maxBridgeAmount: tokenConfig.maxAmount,
     fees: [
@@ -420,10 +421,7 @@ const _getStacks2SolanaFeeInfo = async (
   const reserve = numberFromStacksContractNumber(tokenConf.reserve)
 
   const minAmount = numberFromStacksContractNumber(tokenConf["min-amount"])
-  const maxAmount = BigNumber.min([
-    numberFromStacksContractNumber(tokenConf["max-amount"]),
-    reserve,
-  ])
+  const maxAmount = numberFromStacksContractNumber(tokenConf["max-amount"])
 
   const feeRate = numberFromStacksContractNumber(tokenConf.fee)
   const minFee = numberFromStacksContractNumber(tokenConf["min-fee"])
@@ -455,6 +453,7 @@ const _getStacks2SolanaFeeInfo = async (
             } satisfies TransferProphet_Fee_Fixed,
           ]),
       ],
+      reserveAmount: reserve,
       minBridgeAmount: BigNumber.isZero(minAmount)
         ? normalizedFeeDetails.minFeeAmount
         : BigNumber.max([minAmount, normalizedFeeDetails.minFeeAmount]),
@@ -473,6 +472,7 @@ const _getStacks2SolanaFeeInfo = async (
         minimumAmount: minFee,
       },
     ],
+    reserveAmount: reserve,
     minBridgeAmount: BigNumber.isZero(minAmount)
       ? minFee
       : BigNumber.max([minAmount, minFee]),

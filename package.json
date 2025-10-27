@@ -1,6 +1,6 @@
 {
   "name": "@brotocol-xyz/bro-sdk",
-  "version": "0.6.0-1",
+  "version": "0.6.0-instant-swap-1",
   "description": "Brotocol js SDK",
   "packageManager": "pnpm@9.9.0",
   "keywords": [
@@ -54,7 +54,8 @@
     "docs:watch": "typedoc --watch",
     "build": "pnpm run gen && rm -rf lib && tsup-node src",
     "prepare": "pnpm run build",
-    "test": "vitest --exclude lib --run"
+    "test": "vitest --exclude lib --run",
+    "test:watch": "vitest --exclude lib"
   },
   "dependencies": {
     "@c4/btc-utils": "^0.3.1",

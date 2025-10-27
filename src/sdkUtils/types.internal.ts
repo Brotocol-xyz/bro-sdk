@@ -11,6 +11,7 @@ import { StacksTokenInfo } from "../stacksUtils/apiHelpers/getAllStacksTokens"
 import { TronSupportedRoute } from "../tronUtils/types"
 import { DefinedRoute, KnownRoute } from "../utils/buildSupportedRoutes"
 import { pMemoizeImpl } from "../utils/pMemoize"
+import { Subscribable } from "../utils/Subscribable"
 import { GeneralCacheInterface } from "../utils/types/GeneralCacheInterface"
 import { KnownChainId } from "../utils/types/knownIds"
 import { TransferProphet } from "../utils/types/TransferProphet"
@@ -40,6 +41,9 @@ export interface SDKGlobalContext {
   }
   backendAPI: {
     runtimeEnv: "prod" | "dev" | string
+  }
+  instantSwap: {
+    getOrderUpdatedSignal?: (info: { id: string }) => Subscribable<{}>
   }
   stacks: {
     tokensCache?: SDKGlobalContextCache<
@@ -83,6 +87,9 @@ export interface SDKGlobalContext {
       string,
       Promise<undefined | TransferProphet>
     >
+    tokenInfoCaches: {
+      decimals: SDKGlobalContextCache<string, Promise<undefined | number>>
+    }
     routesConfigCache?: SDKGlobalContextCache<
       "mainnet" | "testnet",
       Promise<EVMSupportedRoute[]>

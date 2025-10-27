@@ -184,6 +184,7 @@ const _getEvm2StacksFeeInfo = async (
         minimumAmount: resp.minFeeAmount,
       },
     ],
+    reserveAmount: null,
     minBridgeAmount: BigNumber.isZero(minAmount) ? null : minAmount,
     maxBridgeAmount: BigNumber.isZero(maxAmount) ? null : maxAmount,
   }
@@ -232,6 +233,7 @@ const getEvm2StacksNativeBridgeFeeInfo = async (
     isPaused: resp.isPaused,
     bridgeToken: route.fromToken,
     fees: [],
+    reserveAmount: null,
     minBridgeAmount: null,
     maxBridgeAmount: null,
   }
@@ -388,10 +390,7 @@ const _getStacks2EvmFeeInfo = async (
   const reserve = numberFromStacksContractNumber(tokenConf.reserve)
 
   const minAmount = numberFromStacksContractNumber(tokenConf["min-amount"])
-  const maxAmount = BigNumber.min([
-    numberFromStacksContractNumber(tokenConf["max-amount"]),
-    reserve,
-  ])
+  const maxAmount = numberFromStacksContractNumber(tokenConf["max-amount"])
 
   const feeRate = numberFromStacksContractNumber(tokenConf.fee)
   const minFee = numberFromStacksContractNumber(tokenConf["min-fee"])
@@ -423,6 +422,7 @@ const _getStacks2EvmFeeInfo = async (
               } satisfies TransferProphet_Fee_Fixed,
             ]),
       ],
+      reserveAmount: reserve,
       minBridgeAmount: BigNumber.isZero(minAmount)
         ? normalizedFeeDetails.minFeeAmount
         : BigNumber.max([minAmount, normalizedFeeDetails.minFeeAmount]),
@@ -441,6 +441,7 @@ const _getStacks2EvmFeeInfo = async (
         minimumAmount: minFee,
       },
     ],
+    reserveAmount: reserve,
     minBridgeAmount: BigNumber.isZero(minAmount)
       ? minFee
       : BigNumber.max([minAmount, minFee]),

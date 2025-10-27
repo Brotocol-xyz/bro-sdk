@@ -83,25 +83,80 @@ export interface SwapRouteViaEVMDexAggregator_WithMinimumAmountsToReceive_Public
 
 // ----------- SwapRouteViaEVMDexAggregator end -----------
 
+// ----------- SwapRouteViaInstantSwap start -----------
+
+export interface SwapRouteViaInstantSwap {
+  via: "instantSwap"
+}
+
+export interface SwapRouteViaInstantSwap_WithExchangeRate
+  extends SwapRouteViaInstantSwap {
+  composedExchangeRate: BigNumber
+}
+export interface SwapRouteViaInstantSwap_WithExchangeRate_Public
+  extends SwapRouteViaInstantSwap {
+  composedExchangeRate: SDKNumber
+}
+
+export interface SwapRouteViaInstantSwap_WithMinimumAmountsToReceive
+  extends SwapRouteViaInstantSwap {
+  minimumAmountsToReceive: BigNumber
+}
+export interface SwapRouteViaInstantSwap_WithMinimumAmountsToReceive_Public
+  extends SwapRouteViaInstantSwap {
+  minimumAmountsToReceive: SDKNumber
+}
+
+// ----------- SwapRouteViaInstantSwap end -----------
+
 // ----------- SwapRoute start -----------
 
-export type SwapRoute = SwapRouteViaALEX | SwapRouteViaEVMDexAggregator
+export type SwapRoute =
+  | SwapRouteViaALEX
+  | SwapRouteViaEVMDexAggregator
+  | SwapRouteViaInstantSwap
+
+export type SwapRoute_GoThroughStacks = Exclude<
+  SwapRoute,
+  SwapRouteViaInstantSwap
+>
 
 export type SwapRoute_WithExchangeRate =
   | SwapRouteViaALEX_WithExchangeRate
   | SwapRouteViaEVMDexAggregator_WithExchangeRate
-
+  | SwapRouteViaInstantSwap_WithExchangeRate
 export type SwapRoute_WithExchangeRate_Public =
   | SwapRouteViaALEX_WithExchangeRate_Public
   | SwapRouteViaEVMDexAggregator_WithExchangeRate_Public
+  | SwapRouteViaInstantSwap_WithExchangeRate_Public
+
+export type SwapRoute_GoThroughStacks_WithExchangeRate = Exclude<
+  SwapRoute_WithExchangeRate,
+  SwapRouteViaInstantSwap
+>
+export type SwapRoute_GoThroughStacks_WithExchangeRate_Public = Exclude<
+  SwapRoute_WithExchangeRate_Public,
+  SwapRouteViaInstantSwap
+>
 
 export type SwapRoute_WithMinimumAmountsToReceive =
   | SwapRouteViaALEX_WithMinimumAmountsToReceive
   | SwapRouteViaEVMDexAggregator_WithMinimumAmountsToReceive
-
+  | SwapRouteViaInstantSwap_WithMinimumAmountsToReceive
 export type SwapRoute_WithMinimumAmountsToReceive_Public =
   | SwapRouteViaALEX_WithMinimumAmountsToReceive_Public
   | SwapRouteViaEVMDexAggregator_WithMinimumAmountsToReceive_Public
+  | SwapRouteViaInstantSwap_WithMinimumAmountsToReceive_Public
+
+export type SwapRoute_GoThroughStacks_WithMinimumAmountsToReceive = Exclude<
+  SwapRoute_WithMinimumAmountsToReceive,
+  SwapRouteViaInstantSwap_WithMinimumAmountsToReceive
+>
+export type SwapRoute_GoThroughStacks_WithMinimumAmountsToReceive_Public =
+  Exclude<
+    SwapRoute_WithMinimumAmountsToReceive_Public,
+    SwapRouteViaInstantSwap_WithMinimumAmountsToReceive_Public
+  >
 
 // ----------- SwapRoute end -----------
 
@@ -205,6 +260,17 @@ export async function getAndCheckTransitStacksTokens(
       via: "evmDexAggregator",
       swap: info.swapRoute,
     })
+  } else if (info.swapRoute.via === "instantSwap") {
+    swapStartTokenPromise = toCorrespondingStacksToken(
+      ctx,
+      info.fromChain,
+      info.fromToken,
+    )
+    swapEndTokenPromise = toCorrespondingStacksToken(
+      ctx,
+      info.toChain,
+      info.toToken,
+    )
   } else {
     checkNever(info.swapRoute)
   }
@@ -390,7 +456,7 @@ export async function getSpecialFeeDetailsForSwapRoute(
     /**
      * the swap step between the previous route and the current one
      */
-    swapRoute: null | Pick<SwapRoute, "via">
+    swapRoute: null | Pick<SwapRoute_GoThroughStacks, "via">
   },
 ): Promise<undefined | SpecialFeeDetailsForSwapRoute> {
   let feeInfo: undefined | SpecialFeeDetailsForSwapRoute

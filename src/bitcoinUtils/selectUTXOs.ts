@@ -1,10 +1,13 @@
+import { NETWORK, TEST_NETWORK } from "@scure/btc-signer"
 import { sortBy } from "../utils/arrayHelpers"
 import { MAX_BIGINT, sum } from "../utils/bigintHelpers"
 import { decodeHex } from "../utils/hexHelpers"
 import { isNotNull } from "../utils/typeHelpers"
-import { ReselectSpendableUTXOsFn_Public } from "../sdkUtils/bridgeFromBitcoin"
+import { getChainIdNetworkType, KnownChainId } from "../utils/types/knownIds"
 import {
+  excludeUTXOs,
   isSameUTXO,
+  scriptPubKeyToAddress,
   sumUTXO,
   UTXOBasic,
   UTXOConfirmed,
@@ -65,28 +68,63 @@ export const reselectSpendableUTXOsWithSafePadFactory = (
 
     const difference = satsToSend - selectedAmount
     if (difference > 0n) {
-      return utxos.concat({
-        addressType: "p2pkh",
-        txId: "0000000000000000000000000000000000000000000000000000000000000000",
-        index: 0,
-        amount: MAX_BIGINT,
-        /**
-         * OutScript.encode({
-         *   type: 'pkh',
-         *   hash: hash160(secp256k1.getPublicKey(
-         *     hex.decode('0000000000000000000000000000000000000000000000000000000000000001'),
-         *     false,
-         *   ))
-         * })
-         */
-        scriptPubKey: decodeHex(
-          "76a91491b24bf9f5288532960ac687abb035127b1d28a588ac",
-        ),
-        isPublicKeyCompressed: false,
-      })
+      return utxos.concat(getPlaceholderUTXO({ amount: MAX_BIGINT }))
     }
 
     return utxos
+  }
+}
+
+export function getPlaceholderUTXO(options: { amount: bigint }): UTXOSpendable
+export function getPlaceholderUTXO(options: {
+  network:
+    | KnownChainId.BitcoinChain
+    | KnownChainId.BRC20Chain
+    | KnownChainId.RunesChain
+  amount: bigint
+}): UTXOSpendable & {
+  address: string
+}
+export function getPlaceholderUTXO(options: {
+  network?:
+    | KnownChainId.BitcoinChain
+    | KnownChainId.BRC20Chain
+    | KnownChainId.RunesChain
+  amount: bigint
+}): UTXOSpendable & {
+  address?: string
+} {
+  /**
+   * OutScript.encode({
+   *   type: 'pkh',
+   *   hash: hash160(secp256k1.getPublicKey(
+   *     hex.decode('0000000000000000000000000000000000000000000000000000000000000001'),
+   *     false,
+   *   ))
+   * })
+   */
+  const scriptPubKey = decodeHex(
+    "76a91491b24bf9f5288532960ac687abb035127b1d28a588ac",
+  )
+
+  const address =
+    options.network == null
+      ? undefined
+      : scriptPubKeyToAddress(
+          getChainIdNetworkType(options.network) === "mainnet"
+            ? NETWORK
+            : TEST_NETWORK,
+          scriptPubKey,
+        )
+
+  return {
+    addressType: "p2pkh",
+    txId: "0000000000000000000000000000000000000000000000000000000000000000",
+    index: 0,
+    amount: options.amount,
+    address,
+    scriptPubKey,
+    isPublicKeyCompressed: false,
   }
 }
 
@@ -117,4 +155,24 @@ export function selectUTXOs(
   }
 
   return inputs
+}
+
+export type ReselectSpendableUTXOsFn_Public = (
+  satsToSend: bigint,
+  lastTimeSelectedUTXOs: UTXOSpendable[],
+) => Promise<UTXOSpendable[]>
+export function reselectSpendableUTXOsFactory_public(
+  reselectSpendableUTXOs_public: ReselectSpendableUTXOsFn_Public,
+): ReselectSpendableUTXOsFn {
+  return async (satsToSend, pinnedUTXOs, lastTimeSelectedUTXOs) => {
+    satsToSend = satsToSend - sumUTXO(pinnedUTXOs)
+    lastTimeSelectedUTXOs = lastTimeSelectedUTXOs.filter(
+      excludeUTXOs(pinnedUTXOs),
+    )
+    const selected = await reselectSpendableUTXOs_public(
+      satsToSend,
+      lastTimeSelectedUTXOs,
+    )
+    return [...pinnedUTXOs, ...selected]
+  }
 }

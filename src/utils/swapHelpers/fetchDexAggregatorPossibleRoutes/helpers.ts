@@ -1,7 +1,10 @@
 import { readContract } from "viem/actions"
 import { ERC20Abi } from "../../../evmUtils/contractAbi/ERC20Abi"
+import {
+  getERC20TokenDecimals,
+  getEVMTokenContractInfo,
+} from "../../../evmUtils/contractHelpers"
 import { evmChainIdFromKnownChainId } from "../../../evmUtils/evmClients"
-import { getEVMTokenContractInfo } from "../../../evmUtils/contractHelpers"
 import {
   EVMAddress,
   evmNativeCurrencyAddress,
@@ -28,7 +31,6 @@ export interface QueryableRoute {
     decimals: number
   }
   amount: SDKNumber
-  slippage: SDKNumber
 }
 
 export interface DexAggregatorRoute {
@@ -38,13 +40,12 @@ export interface DexAggregatorRoute {
   toToken: KnownTokenId.EVMToken
   fromAmount: SDKNumber
   toAmount: SDKNumber
-  slippage: SDKNumber
 }
 
 export type FetchRoutesImpl = (info: {
-  possibleRoutes: QueryableRoute[]
+  possibleRoutes: (QueryableRoute & { id: string })[]
   abortSignal?: AbortSignal
-}) => Promise<DexAggregatorRoute[]>
+}) => Promise<(DexAggregatorRoute & { id: string })[]>
 
 export async function getQueryableRoutes(
   sdkContext: SDKGlobalContext,
@@ -53,7 +54,6 @@ export async function getQueryableRoutes(
     fromToken: KnownTokenId.EVMToken
     toToken: KnownTokenId.EVMToken
     amount: BigNumber
-    slippage: BigNumber
   },
 ): Promise<undefined | QueryableRoute> {
   const [chainId, fromEVMToken, toEVMToken] = await Promise.all([
@@ -71,23 +71,19 @@ export async function getQueryableRoutes(
     return
   }
 
-  const client = Object.values(sdkContext.evm.viemClients).find(
-    c => c.chain?.id === Number(chainId),
-  )
-  if (client == null) return
-
   const [fromTokenDecimals, toTokenDecimals] = await Promise.all([
-    readContract(client, {
-      abi: ERC20Abi,
-      address: fromEVMToken.tokenContractAddress,
-      functionName: "decimals",
-    }),
-    readContract(client, {
-      abi: ERC20Abi,
-      address: toEVMToken.tokenContractAddress,
-      functionName: "decimals",
-    }),
+    getERC20TokenDecimals(
+      sdkContext,
+      info.evmChain,
+      fromEVMToken.tokenContractAddress,
+    ),
+    getERC20TokenDecimals(
+      sdkContext,
+      info.evmChain,
+      toEVMToken.tokenContractAddress,
+    ),
   ])
+  if (fromTokenDecimals == null || toTokenDecimals == null) return
 
   return {
     chain: {
@@ -105,6 +101,5 @@ export async function getQueryableRoutes(
       decimals: toTokenDecimals,
     },
     amount: toSDKNumberOrUndefined(info.amount),
-    slippage: toSDKNumberOrUndefined(info.slippage),
   }
 }

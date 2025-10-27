@@ -1,13 +1,13 @@
 import { isAddress } from "viem"
-import { SDK_NAME } from "../bitcoinUtils/constants"
+import { SDK_NAME } from "../constants"
 import { EVMEndpointContract } from "../evmUtils/evmContractAddresses"
 import { BigNumber } from "../utils/BigNumber"
 import { InvalidMethodParametersError } from "../utils/errors"
 
 /**
  * A branded literal type used for SDK-specific types `ChainId`, `TokenId` and `SDKNumber`.
- * 
- * For example: 
+ *
+ * For example:
  * - `"bitcoin-mainnet (BroSDK ChainId)"` represents a valid `ChainId`
  * - `"brc20-something (BroSDK TokenId)"` represents a valid `TokenId`
  * - `"10 (BroSDK number)"` represents a valid `SDKNumber`
@@ -66,19 +66,21 @@ export function toSDKNumberOrUndefined<
   return BigNumber.toString(n) as SDKNumber
 }
 
-export function formatSDKNumber(n: SDKNumber | number | bigint | BigNumber): `${number}` {
+export function formatSDKNumber(
+  n: SDKNumber | number | bigint | BigNumber,
+): `${number}` {
   return toSDKNumberOrUndefined(n) as `${number}`
 }
 
 export type EVMAddress = `0x${string}`
 export const isEVMAddress = isAddress
 
-export type RuneIdCombined = `${number}:${number}`
-
 export const evmNativeCurrencyAddress = Symbol(
   `[${SDK_NAME}] EVM Native Currency Address`,
 )
 export type EVMNativeCurrencyAddress = typeof evmNativeCurrencyAddress
+
+export type RuneIdCombined = `${number}:${number}`
 
 export interface StacksContractAddress {
   deployerAddress: string

@@ -14,7 +14,7 @@ export async function broadcastRevealableTransaction(
     orderData: Uint8Array
     orderOutputIndex: number
     orderOutputSatsAmount: bigint
-    pegInAddress: {
+    revealToAddress: {
       address: string
       scriptPubKey: Uint8Array
     }
@@ -32,8 +32,8 @@ export async function broadcastRevealableTransaction(
       orderOutputIndex: info.orderOutputIndex,
       orderOutputSatoshiAmount: info.orderOutputSatsAmount.toString(),
       xlinkPegInAddress: {
-        address: info.pegInAddress.address,
-        scriptPubKeyHex: toHex(info.pegInAddress.scriptPubKey),
+        address: info.revealToAddress.address,
+        scriptPubKeyHex: toHex(info.revealToAddress.scriptPubKey),
       },
     },
   })

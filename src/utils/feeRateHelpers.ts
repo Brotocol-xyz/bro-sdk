@@ -1,4 +1,4 @@
-import { SDK_NAME } from "../bitcoinUtils/constants"
+import { SDK_NAME } from "../constants"
 import { BigNumber } from "./BigNumber"
 import { concat, last, reduce } from "./arrayHelpers"
 import { checkNever, OneOrMore } from "./typeHelpers"
@@ -272,6 +272,11 @@ export const composeTransferProphet2 = (
   return {
     isPaused: transferProphet1.isPaused || transferProphet2.isPaused,
     bridgeToken: transferProphet1.bridgeToken,
+    /**
+     * Users only need to consider the final step reserve amount, the insufficient
+     * reserve of intermediate steps will be handled automatically by the bridge
+     */
+    reserveAmount: transferProphet2.reserveAmount,
     minBridgeAmount,
     maxBridgeAmount,
     fees: [

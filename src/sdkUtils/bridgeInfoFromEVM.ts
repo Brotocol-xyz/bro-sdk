@@ -6,9 +6,7 @@ import {
   isSupportedEVMRoute,
 } from "../evmUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
-import {
-  getStacks2SolanaFeeInfo,
-} from "../solanaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { BigNumber } from "../utils/BigNumber"
 import { getAndCheckTransitStacksTokens } from "../utils/SwapRouteHelpers"
 import {
@@ -43,6 +41,7 @@ export interface BridgeInfoFromEVMInput {
   amount: SDKNumber
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BridgeInfoFromEVMOutput
   extends PublicTransferProphetAggregated {}
 

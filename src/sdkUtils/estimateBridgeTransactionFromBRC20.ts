@@ -3,7 +3,7 @@ import {
   BitcoinAddress,
   getBitcoinHardLinkageAddress,
 } from "../bitcoinUtils/btcAddresses"
-import { SDK_NAME } from "../bitcoinUtils/constants"
+import { SDK_NAME } from "../constants"
 import { getMetaPegInAddress } from "../metaUtils/btcAddresses"
 import { isSupportedBRC20Route } from "../metaUtils/peggingHelpers"
 import {
@@ -12,6 +12,7 @@ import {
   createBridgeOrder_MetaToMeta,
   createBridgeOrder_MetaToSolana,
   createBridgeOrder_MetaToStacks,
+  fakeFromAmountForBRC20,
 } from "../stacksUtils/createBridgeOrderFromMeta"
 import { BigNumber } from "../utils/BigNumber"
 import {
@@ -28,7 +29,7 @@ import {
   InvalidMethodParametersError,
   UnsupportedBridgeRouteError,
 } from "../utils/errors"
-import { SwapRoute_WithMinimumAmountsToReceive_Public } from "../utils/SwapRouteHelpers"
+import { SwapRoute_GoThroughStacks_WithMinimumAmountsToReceive_Public } from "../utils/SwapRouteHelpers"
 import { assertExclude, checkNever } from "../utils/typeHelpers"
 import {
   _knownChainIdToErrorMessagePart,
@@ -65,7 +66,7 @@ export interface EstimateBridgeTransactionFromBRC20Input {
   toAddressScriptPubKey?: Uint8Array
 
   inputInscriptionUTXO: UTXOSpendable
-  swapRoute?: SwapRoute_WithMinimumAmountsToReceive_Public
+  swapRoute?: SwapRoute_GoThroughStacks_WithMinimumAmountsToReceive_Public
 
   networkFeeRate: bigint
   networkFeeChangeAddress: string
@@ -214,7 +215,9 @@ async function estimateFromBRC20_toStacks(
 ): Promise<EstimateBridgeTransactionFromBRC20Output> {
   const createdOrder = await createBridgeOrder_MetaToStacks(sdkContext, {
     ...info,
+    methodName: "estimateBridgeTransactionFromBRC20",
     fromBitcoinScriptPubKey: info.fromAddressScriptPubKey,
+    fromAmount: fakeFromAmountForBRC20,
     toStacksAddress: info.toAddress,
     swap:
       info.swapRoute == null
@@ -258,7 +261,9 @@ async function estimateFromBRC20_toEVM(
     ? null
     : await createBridgeOrder_MetaToEVM(sdkContext, {
         ...info,
+        methodName: "estimateBridgeTransactionFromBRC20",
         fromBitcoinScriptPubKey: info.fromAddressScriptPubKey,
+        fromAmount: fakeFromAmountForBRC20,
         toEVMAddress: info.toAddress,
         swap:
           info.swapRoute == null
@@ -316,7 +321,9 @@ async function estimateFromBRC20_toBitcoin(
 
   const createdOrder = await createBridgeOrder_MetaToBitcoin(sdkContext, {
     ...info,
+    methodName: "estimateBridgeTransactionFromBRC20",
     fromBitcoinScriptPubKey: info.fromAddressScriptPubKey,
+    fromAmount: fakeFromAmountForBRC20,
     toBitcoinScriptPubKey: info.toAddressScriptPubKey,
     swap:
       info.swapRoute == null
@@ -374,7 +381,9 @@ async function estimateFromBRC20_toMeta(
 
   const createdOrder = await createBridgeOrder_MetaToMeta(sdkContext, {
     ...info,
+    methodName: "estimateBridgeTransactionFromBRC20",
     fromBitcoinScriptPubKey: info.fromAddressScriptPubKey,
+    fromAmount: fakeFromAmountForBRC20,
     toBitcoinScriptPubKey: info.toAddressScriptPubKey,
     swap:
       info.swapRoute == null
@@ -416,7 +425,9 @@ async function estimateFromBRC20_toSolana(
 ): Promise<EstimateBridgeTransactionFromBRC20Output> {
   const createdOrder = await createBridgeOrder_MetaToSolana(sdkContext, {
     ...info,
+    methodName: "estimateBridgeTransactionFromBRC20",
     fromBitcoinScriptPubKey: info.fromAddressScriptPubKey,
+    fromAmount: fakeFromAmountForBRC20,
     toSolanaAddress: info.toAddress,
     swap:
       info.swapRoute == null
@@ -465,6 +476,7 @@ type EstimateBRC20TransactionInput = Omit<
 > & {
   withHardLinkageOutput: boolean
   orderData: Uint8Array
+  swapRoute?: SwapRoute_GoThroughStacks_WithMinimumAmountsToReceive_Public
 }
 async function estimateBRC20Transaction(
   sdkContext: SDKGlobalContext,
@@ -488,8 +500,11 @@ async function estimateBRC20Transaction(
     toToken: info.toToken as any,
     pegInAddress,
     hardLinkageOutput:
-      (await getBitcoinHardLinkageAddress(info.fromChain, info.toChain)) ??
-      null,
+      (await getBitcoinHardLinkageAddress(
+        info.fromChain,
+        info.toChain,
+        info.swapRoute,
+      )) ?? null,
   })
 
   return {

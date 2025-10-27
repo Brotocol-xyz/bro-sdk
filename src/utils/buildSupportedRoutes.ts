@@ -342,6 +342,8 @@ export const memoizedIsSupportedFactory = (
           swap = route.swapRoute.swapPools.map(p => p.poolId).join("->")
         } else if (route.swapRoute.via === "evmDexAggregator") {
           swap = `${route.swapRoute.fromEVMToken}->${route.swapRoute.toEVMToken}`
+        } else if (route.swapRoute.via === "instantSwap") {
+          swap = `instantSwap`
         } else {
           checkNever(route.swapRoute)
           swap = JSON.stringify(route.swapRoute)

@@ -1,6 +1,7 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
 import { getStacks2EvmFeeInfo } from "../evmUtils/peggingHelpers"
 import {
+  getInstantSwapFeeInfo,
   getMeta2StacksFeeInfo,
   getStacks2MetaFeeInfo,
   isSupportedBRC20Route,
@@ -65,6 +66,7 @@ export interface BridgeInfoFromMetaInput {
   swapRoute?: SwapRoute_WithExchangeRate_Public
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BridgeInfoFromMetaOutput
   extends PublicTransferProphetAggregated {}
 
@@ -410,6 +412,16 @@ async function bridgeInfoFromMeta_toStacks(
     )
   }
 
+  if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
+  }
+
   checkNever(info.swapRoute)
   throw new UnsupportedBridgeRouteError(
     info.fromChain,
@@ -540,6 +552,14 @@ async function bridgeInfoFromMeta_toEVM(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -695,6 +715,38 @@ async function bridgeInfoFromMeta_toBitcoin(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    if (KnownChainId.isBRC20Chain(info.fromChain)) {
+      throw new UnsupportedBridgeRouteError(
+        info.fromChain,
+        info.toChain,
+        info.fromToken,
+        info.toToken,
+        info.swapRoute,
+      )
+    } else if (KnownChainId.isRunesChain(info.fromChain)) {
+      const _routes = [
+        {
+          fromChain: info.fromChain,
+          fromToken: info.fromToken as KnownTokenId.RunesToken,
+          toChain: info.toChain,
+          toToken: info.toToken,
+        },
+      ] as const satisfies KnownRoute[]
+
+      const _steps = await Promise.all([getInstantSwapFeeInfo(ctx, _routes[0])])
+
+      routes = _routes
+      steps = _steps
+      exchangeRates = [
+        BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+      ]
+    } else {
+      checkNever(info.fromChain)
+      routes = []
+      steps = []
+      exchangeRates = []
+    }
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -855,6 +907,51 @@ async function bridgeInfoFromMeta_toMeta(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    if (KnownChainId.isBRC20Chain(info.fromChain)) {
+      throw new UnsupportedBridgeRouteError(
+        info.fromChain,
+        info.toChain,
+        info.fromToken,
+        info.toToken,
+        info.swapRoute,
+      )
+    } else if (KnownChainId.isRunesChain(info.fromChain)) {
+      if (
+        KnownChainId.isBRC20Chain(info.toChain) ||
+        KnownTokenId.isBRC20Token(info.toToken)
+      ) {
+        throw new UnsupportedBridgeRouteError(
+          info.fromChain,
+          info.toChain,
+          info.fromToken,
+          info.toToken,
+          info.swapRoute,
+        )
+      }
+
+      const _routes = [
+        {
+          fromChain: info.fromChain,
+          fromToken: info.fromToken as KnownTokenId.RunesToken,
+          toChain: info.toChain,
+          toToken: info.toToken,
+        },
+      ] as const satisfies KnownRoute[]
+
+      const _steps = await Promise.all([getInstantSwapFeeInfo(ctx, _routes[0])])
+
+      routes = _routes
+      steps = _steps
+      exchangeRates = [
+        BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
+      ]
+    } else {
+      checkNever(info.fromChain)
+      routes = []
+      steps = []
+      exchangeRates = []
+    }
   } else {
     checkNever(info.swapRoute)
     routes = []
@@ -1008,6 +1105,14 @@ async function bridgeInfoFromMeta_toSolana(
       BigNumber.from(info.swapRoute?.composedExchangeRate ?? BigNumber.ONE),
       BigNumber.ONE,
     ]
+  } else if (info.swapRoute.via === "instantSwap") {
+    throw new UnsupportedBridgeRouteError(
+      info.fromChain,
+      info.toChain,
+      info.fromToken,
+      info.toToken,
+      info.swapRoute,
+    )
   } else {
     checkNever(info.swapRoute)
     routes = []

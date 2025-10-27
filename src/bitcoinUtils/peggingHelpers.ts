@@ -17,6 +17,7 @@ import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
 import { BigNumber } from "../utils/BigNumber"
 import {
   IsSupportedFn,
+  KnownRoute_FromBitcoin_ToRunes,
   KnownRoute_FromBitcoin_ToStacks,
   KnownRoute_FromStacks_ToBitcoin,
   KnownRoute_ToStacks,
@@ -27,7 +28,7 @@ import {
   getSpecialFeeDetailsForSwapRoute,
   NormalizedSpecialFeeDetails,
   normalizeSpecialFeeDetails,
-  SwapRoute,
+  SwapRoute_GoThroughStacks,
 } from "../utils/SwapRouteHelpers"
 import { checkNever, isNotNull } from "../utils/typeHelpers"
 import {
@@ -40,13 +41,14 @@ import {
   TransferProphet_Fee_Fixed,
   TransferProphet_Fee_Rate,
 } from "../utils/types/TransferProphet"
+import { getInstantSwapFees } from "./apiHelpers/getInstantSwapFees"
 import { getBTCPegInAddress } from "./btcAddresses"
 
 export const getBtc2StacksFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromBitcoin_ToStacks,
   options: {
-    swapRoute: null | Pick<SwapRoute, "via">
+    swapRoute: null | Pick<SwapRoute_GoThroughStacks, "via">
   },
 ): Promise<undefined | TransferProphet> => {
   return withGlobalContextCache(
@@ -59,7 +61,7 @@ const _getBtc2StacksFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromBitcoin_ToStacks,
   options: {
-    swapRoute: null | Pick<SwapRoute, "via">
+    swapRoute: null | Pick<SwapRoute_GoThroughStacks, "via">
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksBaseContractCallInfo = getStacksContractCallInfo(
@@ -91,6 +93,7 @@ const _getBtc2StacksFeeInfo = async (
     options.swapRoute?.via === 'evmDexAggregator' ? stacksAggContractCallInfo :
     options.swapRoute == null ? stacksBaseContractCallInfo :
     (checkNever(options.swapRoute.via), stacksBaseContractCallInfo)
+  if (contractCallInfo == null) return
 
   const resp = await props({
     isPaused: executeReadonlyCallBro(
@@ -137,6 +140,7 @@ const _getBtc2StacksFeeInfo = async (
         minimumAmount: resp.minFeeAmount,
       },
     ],
+    reserveAmount: null,
     minBridgeAmount: BigNumber.isZero(resp.minFeeAmount)
       ? null
       : resp.minFeeAmount,
@@ -169,7 +173,7 @@ export const getStacks2BtcFeeInfo = async (
     /**
      * the swap step between the previous route and the current one
      */
-    swapRoute: null | Pick<SwapRoute, "via">
+    swapRoute: null | Pick<SwapRoute_GoThroughStacks, "via">
   },
 ): Promise<undefined | TransferProphet> => {
   return withGlobalContextCache(
@@ -209,7 +213,7 @@ const _getStacks2BtcFeeInfo = async (
     /**
      * the swap step between the previous route and the current one
      */
-    swapRoute: null | Pick<SwapRoute, "via">
+    swapRoute: null | Pick<SwapRoute_GoThroughStacks, "via">
   },
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
@@ -311,11 +315,19 @@ const _getStacks2BtcFeeInfo = async (
             amount: feeDetails.gasFee.amount,
           } satisfies TransferProphet_Fee_Fixed),
     ].filter(isNotNull),
+    reserveAmount: null,
     minBridgeAmount: BigNumber.isZero(resp.minFeeAmount)
       ? null
       : resp.minFeeAmount,
     maxBridgeAmount: null,
   }
+}
+
+export const getInstantSwapFeeInfo = async (
+  ctx: SDKGlobalContext,
+  route: KnownRoute_FromBitcoin_ToRunes,
+): Promise<undefined | TransferProphet> => {
+  return getInstantSwapFees(ctx, route)
 }
 
 export const isSupportedBitcoinRoute: IsSupportedFn = async (ctx, route) => {
