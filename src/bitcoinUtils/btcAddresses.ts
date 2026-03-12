@@ -23,7 +23,11 @@ export function getBTCPegInAddress(
       /**
        * https://t.me/c/1599543687/54621
        */
-      addr = "bc1q9hs56nskqsxmgend4w0823lmef33sux6p8rzlp"
+      // addr = "bc1q9hs56nskqsxmgend4w0823lmef33sux6p8rzlp"
+      /**
+       * https://t.me/c/1599543687/82150
+       */
+      addr = "bc1qfcwjrdjk3agmg50n4c7t4ew2kjqqxc09qgvu7d"
       break
     case KnownChainId.Bitcoin.Testnet:
       addr = "tb1qeprcndv9n8luumegjsnljjcf68e7ay62n5a667"
