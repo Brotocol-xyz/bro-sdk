@@ -1,6 +1,6 @@
 {
   "name": "@brotocol-xyz/bro-sdk",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Brotocol js SDK",
   "packageManager": "pnpm@9.9.0",
   "keywords": [
