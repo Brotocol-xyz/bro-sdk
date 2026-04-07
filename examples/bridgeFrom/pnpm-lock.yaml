@@ -153,8 +153,8 @@ packages:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
     engines: {node: '>= 0.4'}
 
-  clarity-codegen@1.1.3:
-    resolution: {integrity: sha512-/EXXaq5J8e9ldrQjsNPQwr2QOoIMBvLHFab5nahFwdfG18ZiyXSx9SvxHUbzMHBLUzsvgnlmopAlIj+R+2rwmw==}
+  clarity-codegen@1.1.4:
+    resolution: {integrity: sha512-MZZ4ALjPvTOab+m++Gk45dua8d8B5dmsoOqs1ozdyjnXKvGwN06GinqQv6P3hoQrhWFirhFe34QhtMJbwJE72Q==}
     hasBin: true
     peerDependencies:
       '@stacks/common': ^7.0.2
@@ -412,7 +412,7 @@ snapshots:
       '@stacks/transactions': 7.0.6
       big.js: 6.2.2
       c32check: 2.0.0
-      clarity-codegen: 1.1.3(@stacks/common@7.0.2)(@stacks/transactions@7.0.6)
+      clarity-codegen: 1.1.4(@stacks/common@7.0.2)(@stacks/transactions@7.0.6)
       viem: 2.29.2
     transitivePeerDependencies:
       - '@stacks/common'
@@ -555,7 +555,7 @@ snapshots:
       es-errors: 1.3.0
       function-bind: 1.1.2
 
-  clarity-codegen@1.1.3(@stacks/common@7.0.2)(@stacks/transactions@7.0.6):
+  clarity-codegen@1.1.4(@stacks/common@7.0.2)(@stacks/transactions@7.0.6):
     dependencies:
       '@stacks/common': 7.0.2
       '@stacks/stacks-blockchain-api-types': 7.14.1
