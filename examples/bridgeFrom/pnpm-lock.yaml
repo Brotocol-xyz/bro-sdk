@@ -15,8 +15,8 @@ importers:
         specifier: ^22.15.17
         version: 22.15.17
       axios:
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.15.0
+        version: 1.15.0
       bitcoinjs-lib:
         specifier: ^6.1.7
         version: 6.1.7
@@ -119,8 +119,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.9.0:
-    resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
+  axios@1.15.0:
+    resolution: {integrity: sha512-wWyJDlAatxk30ZJer+GeCWS209sA42X+N5jU2jy6oHTp7ufw8uzUTVFBX9+wTfAlhiJXGS0Bq7X6efruWjuK9Q==}
 
   base-x@4.0.1:
     resolution: {integrity: sha512-uAZ8x6r6S3aUM9rbHGVOIsR15U/ZSc82b3ymnCPsT45Gk1DDvhDPdIgB5MrhirZWt+5K0EEPQH985kNqZgNPFw==}
@@ -153,8 +153,8 @@ packages:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
     engines: {node: '>= 0.4'}
 
-  clarity-codegen@1.1.3:
-    resolution: {integrity: sha512-/EXXaq5J8e9ldrQjsNPQwr2QOoIMBvLHFab5nahFwdfG18ZiyXSx9SvxHUbzMHBLUzsvgnlmopAlIj+R+2rwmw==}
+  clarity-codegen@1.1.4:
+    resolution: {integrity: sha512-MZZ4ALjPvTOab+m++Gk45dua8d8B5dmsoOqs1ozdyjnXKvGwN06GinqQv6P3hoQrhWFirhFe34QhtMJbwJE72Q==}
     hasBin: true
     peerDependencies:
       '@stacks/common': ^7.0.2
@@ -216,8 +216,8 @@ packages:
   eventemitter3@5.0.1:
     resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
 
-  follow-redirects@1.15.9:
-    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
+  follow-redirects@1.15.11:
+    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -225,8 +225,8 @@ packages:
       debug:
         optional: true
 
-  form-data@4.0.2:
-    resolution: {integrity: sha512-hGfm/slu0ZabnNt4oaRZ6uREyfCj6P4fT/n6A1rGV+Z0VdGXjfOhVUpkn6qVQONHGIFwmveGXyDs75+nr6FM8w==}
+  form-data@4.0.5:
+    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
 
   function-bind@1.1.2:
@@ -272,8 +272,8 @@ packages:
   lodash.clonedeep@4.5.0:
     resolution: {integrity: sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==}
 
-  lodash@4.17.21:
-    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+  lodash@4.18.1:
+    resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -307,8 +307,9 @@ packages:
       typescript:
         optional: true
 
-  proxy-from-env@1.1.0:
-    resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -412,7 +413,7 @@ snapshots:
       '@stacks/transactions': 7.0.6
       big.js: 6.2.2
       c32check: 2.0.0
-      clarity-codegen: 1.1.3(@stacks/common@7.0.2)(@stacks/transactions@7.0.6)
+      clarity-codegen: 1.1.4(@stacks/common@7.0.2)(@stacks/transactions@7.0.6)
       viem: 2.29.2
     transitivePeerDependencies:
       - '@stacks/common'
@@ -511,11 +512,11 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.9.0:
+  axios@1.15.0:
     dependencies:
-      follow-redirects: 1.15.9
-      form-data: 4.0.2
-      proxy-from-env: 1.1.0
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
 
@@ -555,13 +556,13 @@ snapshots:
       es-errors: 1.3.0
       function-bind: 1.1.2
 
-  clarity-codegen@1.1.3(@stacks/common@7.0.2)(@stacks/transactions@7.0.6):
+  clarity-codegen@1.1.4(@stacks/common@7.0.2)(@stacks/transactions@7.0.6):
     dependencies:
       '@stacks/common': 7.0.2
       '@stacks/stacks-blockchain-api-types': 7.14.1
       '@stacks/transactions': 7.0.6
-      axios: 1.9.0
-      lodash: 4.17.21
+      axios: 1.15.0
+      lodash: 4.18.1
       yargs: 17.7.2
       yqueue: 1.0.1
     transitivePeerDependencies:
@@ -631,13 +632,14 @@ snapshots:
 
   eventemitter3@5.0.1: {}
 
-  follow-redirects@1.15.9: {}
+  follow-redirects@1.15.11: {}
 
-  form-data@4.0.2:
+  form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
       es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
       mime-types: 2.1.35
 
   function-bind@1.1.2: {}
@@ -682,7 +684,7 @@ snapshots:
 
   lodash.clonedeep@4.5.0: {}
 
-  lodash@4.17.21: {}
+  lodash@4.18.1: {}
 
   math-intrinsics@1.1.0: {}
 
@@ -712,7 +714,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  proxy-from-env@1.1.0: {}
+  proxy-from-env@2.1.0: {}
 
   require-directory@2.1.1: {}
 
