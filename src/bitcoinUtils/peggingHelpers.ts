@@ -41,6 +41,7 @@ import {
   TransferProphet_Fee_Rate,
 } from "../utils/types/TransferProphet"
 import { getBTCPegInAddress } from "./btcAddresses"
+import { adjustTransferProphetForBitcoinDust } from "./dustHelpers"
 
 export const getBtc2StacksFeeInfo = async (
   ctx: SDKGlobalContext,
@@ -144,35 +145,38 @@ const _getBtc2StacksFeeInfo = async (
   }
 }
 
+interface GetStacks2BtcFeeInfoOptions {
+  /**
+   * The entry route step that triggered the Stacks transaction.
+   * It's crucial for correctly calculating fees in multi-step bridging
+   * processes.
+   *
+   * Examples:
+   *
+   * * BTC > Runes (`via: ALEX`):
+   *     1. btc > stacks (initialRoute)
+   *     2. stacks > runes
+   * * BTC > Runes (`via: evmDexAggregator`):
+   *     1. btc > stacks (initialRoute as well, but not what we want)
+   *     2. stacks > evm
+   *     3. evm swap
+   *     4. evm > stacks (initialRoute for this partition)
+   *     5. stacks > runes
+   */
+  initialRoute: null | KnownRoute_ToStacks
+  /**
+   * the swap step between the previous route and the current one
+   */
+  swapRoute: null | Pick<SwapRoute, "via">
+  toAddressScriptPubKey?: Uint8Array
+}
+
 export const getStacks2BtcFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromStacks_ToBitcoin,
-  options: {
-    /**
-     * The entry route step that triggered the Stacks transaction.
-     * It's crucial for correctly calculating fees in multi-step bridging
-     * processes.
-     *
-     * Examples:
-     *
-     * * BTC > Runes (`via: ALEX`):
-     *     1. btc > stacks (initialRoute)
-     *     2. stacks > runes
-     * * BTC > Runes (`via: evmDexAggregator`):
-     *     1. btc > stacks (initialRoute as well, but not what we want)
-     *     2. stacks > evm
-     *     3. evm swap
-     *     4. evm > stacks (initialRoute for this partition)
-     *     5. stacks > runes
-     */
-    initialRoute: null | KnownRoute_ToStacks
-    /**
-     * the swap step between the previous route and the current one
-     */
-    swapRoute: null | Pick<SwapRoute, "via">
-  },
+  options: GetStacks2BtcFeeInfoOptions,
 ): Promise<undefined | TransferProphet> => {
-  return withGlobalContextCache(
+  const transferProphet = await withGlobalContextCache(
     ctx.btc.feeRateCache,
     [
       withGlobalContextCache.cacheKeyFromRoute(route),
@@ -183,34 +187,17 @@ export const getStacks2BtcFeeInfo = async (
     ].join("#"),
     () => _getStacks2BtcFeeInfo(ctx, route, options),
   )
+
+  if (transferProphet == null) return
+  return adjustTransferProphetForBitcoinDust(
+    transferProphet,
+    options.toAddressScriptPubKey,
+  )
 }
 const _getStacks2BtcFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromStacks_ToBitcoin,
-  options: {
-    /**
-     * The entry route step that triggered the Stacks transaction.
-     * It's crucial for correctly calculating fees in multi-step bridging
-     * processes.
-     *
-     * Examples:
-     *
-     * * BTC > Runes (`via: ALEX`):
-     *     1. btc > stacks (initialRoute)
-     *     2. stacks > runes
-     * * BTC > Runes (`via: evmDexAggregator`):
-     *     1. btc > stacks (initialRoute as well, but not what we want)
-     *     2. stacks > evm
-     *     3. evm swap
-     *     4. evm > stacks (initialRoute for this partition)
-     *     5. stacks > runes
-     */
-    initialRoute: null | KnownRoute_ToStacks
-    /**
-     * the swap step between the previous route and the current one
-     */
-    swapRoute: null | Pick<SwapRoute, "via">
-  },
+  options: GetStacks2BtcFeeInfoOptions,
 ): Promise<undefined | TransferProphet> => {
   const stacksContractCallInfo = getStacksContractCallInfo(
     ctx,

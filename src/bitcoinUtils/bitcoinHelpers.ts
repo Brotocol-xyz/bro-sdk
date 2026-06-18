@@ -56,12 +56,18 @@ export function scriptPubKeyToAddress(
   return Address(network).encode(OutScript.decode(output))
 }
 
-export function bitcoinToSatoshi(bitcoinAmount: string): bigint {
+export function bitcoinToSatoshi(bitcoinAmount: string | BigNumber): bigint {
   return BigNumber.toBigInt({}, BigNumber.rightMoveDecimals(8, bitcoinAmount))
 }
 
 export function satoshiToBitcoin(satoshiAmount: bigint): string {
-  return BigNumber.toString(BigNumber.leftMoveDecimals(8, satoshiAmount))
+  return BigNumber.toString(satoshiToBitcoinBigNumber(satoshiAmount))
+}
+
+export function satoshiToBitcoinBigNumber(
+  satoshiAmount: number | bigint,
+): BigNumber {
+  return BigNumber.leftMoveDecimals(8, satoshiAmount)
 }
 
 export function getP2TRInternalPublicKey_from_P2TR_publicKey(

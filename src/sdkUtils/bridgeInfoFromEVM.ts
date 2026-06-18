@@ -1,4 +1,5 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
+import { resolveBitcoinDestinationScriptPubKey } from "./bitcoinDestinationHelpers"
 import {
   evmTokenToCorrespondingStacksToken,
   getEvm2StacksFeeInfo,
@@ -6,9 +7,7 @@ import {
   isSupportedEVMRoute,
 } from "../evmUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
-import {
-  getStacks2SolanaFeeInfo,
-} from "../solanaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { BigNumber } from "../utils/BigNumber"
 import { getAndCheckTransitStacksTokens } from "../utils/SwapRouteHelpers"
 import {
@@ -32,10 +31,16 @@ import {
   transformToPublicTransferProphetAggregated2,
 } from "../utils/types/TransferProphet"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
-import { ChainId, SDKNumber, TokenId } from "./types"
+import {
+  BridgeInfoBitcoinDestinationInfo,
+  ChainId,
+  SDKNumber,
+  TokenId,
+} from "./types"
 import { SDKGlobalContext } from "./types.internal"
 
-export interface BridgeInfoFromEVMInput {
+export interface BridgeInfoFromEVMInput
+  extends BridgeInfoBitcoinDestinationInfo {
   fromChain: ChainId
   toChain: ChainId
   fromToken: TokenId
@@ -230,11 +235,18 @@ async function bridgeInfoFromEVM_toBitcoin(
     toToken: info.toToken,
   }
 
+  const toAddressScriptPubKey = resolveBitcoinDestinationScriptPubKey(
+    "bridgeInfoFromEVM",
+    info.toChain,
+    info,
+  )
+
   const [step1, step2] = await Promise.all([
     getEvm2StacksFeeInfo(ctx, step1Route),
     getStacks2BtcFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
       swapRoute: null,
+      toAddressScriptPubKey,
     }),
   ])
   if (step1 == null || step2 == null) {

@@ -1181,7 +1181,6 @@ export class BroSDK {
     return runesIdToRunesToken(this.sdkContext, chain, id)
   }
 
-  
   /**
    * Retrieves the `KnownTokenId.SolanaToken` associated with a given Solana token address
    * on a specific Solana blockchain.

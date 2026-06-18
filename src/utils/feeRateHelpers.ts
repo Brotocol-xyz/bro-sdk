@@ -1,6 +1,6 @@
 import { SDK_NAME } from "../bitcoinUtils/constants"
 import { BigNumber } from "./BigNumber"
-import { concat, last, reduce } from "./arrayHelpers"
+import { concat, hasAny, last, reduce } from "./arrayHelpers"
 import { checkNever, OneOrMore } from "./typeHelpers"
 import {
   TransferProphet,
@@ -15,6 +15,37 @@ export interface TransferProphetAppliedResult {
     | TransferProphet_Fee_Fixed
   )[]
   netAmount: BigNumber
+}
+
+const isBridgeTokenFee = (
+  transferProphet: TransferProphet,
+  fee: TransferProphet["fees"][number],
+): boolean => fee.token === transferProphet.bridgeToken
+
+const assertBridgeTokenRateFee = (
+  transferProphet: TransferProphet,
+  fee: TransferProphet_Fee_Rate,
+): void => {
+  if (isBridgeTokenFee(transferProphet, fee)) return
+
+  throw new Error(
+    `[${SDK_NAME}#applyTransferProphet] transferProphet.bridgeToken (${transferProphet.bridgeToken}) does not match rateFee.token (${fee.token}), which is not expected`,
+  )
+}
+
+const calcRateFeeAmount = (
+  fee: TransferProphet_Fee_Rate,
+  amount: BigNumber,
+): BigNumber => {
+  return BigNumber.max([fee.minimumAmount, BigNumber.mul(fee.rate, amount)])
+}
+
+const getBridgeTokenRateFees = (
+  transferProphet: TransferProphet,
+): TransferProphet_Fee_Rate[] => {
+  return transferProphet.fees.flatMap(fee =>
+    fee.type === "rate" && isBridgeTokenFee(transferProphet, fee) ? [fee] : [],
+  )
 }
 
 export const applyTransferProphets = (
@@ -76,18 +107,11 @@ export const applyTransferProphet = (
     let feeAmount = BigNumber.ZERO
 
     if (f.type === "rate") {
-      if (f.token !== transferProphet.bridgeToken) {
-        throw new Error(
-          `[${SDK_NAME}#applyTransferProphet] transferProphet.bridgeToken (${transferProphet.bridgeToken}) does not match rateFee.token (${f.token}), which is not expected`,
-        )
-      }
-      feeAmount = BigNumber.max([
-        f.minimumAmount,
-        BigNumber.mul(f.rate, amount),
-      ])
+      assertBridgeTokenRateFee(transferProphet, f)
+      feeAmount = calcRateFeeAmount(f, amount)
       fees.push({ ...f, amount: feeAmount })
     } else if (f.type === "fixed") {
-      if (f.token === transferProphet.bridgeToken) {
+      if (isBridgeTokenFee(transferProphet, f)) {
         feeAmount = f.amount
       }
       fees.push(f)
@@ -195,10 +219,8 @@ export const composeTransferProphet2 = (
     last(
       BigNumber.cumulativeMul(
         BigNumber.ONE,
-        transferProphet1.fees.flatMap(f =>
-          f.type === "rate" && f.token === transferProphet1.bridgeToken
-            ? [BigNumber.minus(1, f.rate)]
-            : [],
+        getBridgeTokenRateFees(transferProphet1).map(f =>
+          BigNumber.minus(1, f.rate),
         ),
       ),
     ),
@@ -215,40 +237,37 @@ export const composeTransferProphet2 = (
     exchangeRate,
   )
 
-  const bridgeTokenMinFeeAmount = BigNumber.sum([
-    ...transferProphet1.fees.flatMap(f =>
-      f.type === "rate" && f.token === transferProphet1.bridgeToken
-        ? [f.minimumAmount]
-        : [],
-    ),
-    ...transferProphet2.fees.flatMap(f =>
-      f.type === "rate" && f.token === transferProphet2.bridgeToken
-        ? [
-            /**
-             * convert to the denomination of the first step token
-             */
-            BigNumber.div(f.minimumAmount, step1ToStep2Rate),
-          ]
-        : [],
-    ),
+  const step1MinAmount = maxOrNull([
+    ...getBridgeTokenRateFees(transferProphet1).map(f => f.minimumAmount),
+    transferProphet1.minBridgeAmount,
+  ])
+  const step2MinAmount = maxOrNull([
+    ...getBridgeTokenRateFees(transferProphet2).map(f => f.minimumAmount),
+    transferProphet2.minBridgeAmount,
   ])
 
-  let minBridgeAmount: BigNumber | null = null
-  if (
-    BigNumber.isZero(bridgeTokenMinFeeAmount) /* min fee amount not set */ &&
-    transferProphet1.minBridgeAmount == null &&
-    transferProphet2.minBridgeAmount == null
-  ) {
-    minBridgeAmount = null
-  } else {
-    minBridgeAmount = BigNumber.max([
-      bridgeTokenMinFeeAmount,
-      transferProphet1.minBridgeAmount ?? 0,
-      transferProphet2.minBridgeAmount == null
-        ? 0
-        : BigNumber.div(transferProphet2.minBridgeAmount, step1ToStep2Rate),
-    ])
+  const minBridgeAmountCandidates = [step1MinAmount]
+  let minBridgeAmountImpossible = false
+  // `null` means step2 has no minimum constraint to propagate. It is not an
+  // impossible state; the composed minimum can then come from step1 alone.
+  if (step2MinAmount != null) {
+    // Step2's minimum is denominated in step2's token. Convert it back to the
+    // required step1 output, then invert step1's fees to find the step1 input
+    // needed to produce that output. `null` means step1 can never produce it.
+    const propagatedMinBridgeAmount = minInputForTargetOutput(
+      BigNumber.div(step2MinAmount, exchangeRate),
+      transferProphet1,
+    )
+    if (propagatedMinBridgeAmount == null) {
+      minBridgeAmountImpossible = true
+    } else {
+      minBridgeAmountCandidates.push(propagatedMinBridgeAmount)
+    }
   }
+
+  const minBridgeAmount = minBridgeAmountImpossible
+    ? null
+    : maxOrNull(minBridgeAmountCandidates)
 
   let maxBridgeAmount: BigNumber | null = null
   if (
@@ -269,8 +288,16 @@ export const composeTransferProphet2 = (
       transferProphet1.maxBridgeAmount ?? transferProphet2.maxBridgeAmount
   }
 
+  const isPaused =
+    transferProphet1.isPaused ||
+    transferProphet2.isPaused ||
+    minBridgeAmountImpossible ||
+    (minBridgeAmount != null &&
+      maxBridgeAmount != null &&
+      BigNumber.isGt(minBridgeAmount, maxBridgeAmount))
+
   return {
-    isPaused: transferProphet1.isPaused || transferProphet2.isPaused,
+    isPaused,
     bridgeToken: transferProphet1.bridgeToken,
     minBridgeAmount,
     maxBridgeAmount,
@@ -309,6 +336,205 @@ export const composeTransferProphet2 = (
     ],
     transferProphets: [transferProphet1, transferProphet2],
   }
+}
+
+function maxOrNull(amounts: (null | BigNumber)[]): null | BigNumber {
+  const nonZero = amounts.filter(
+    (a): a is BigNumber => a != null && !BigNumber.isZero(a),
+  )
+  return hasAny(nonZero) ? BigNumber.max(nonZero) : null
+}
+
+/**
+ * Calculate the minimum input amount needed to produce at least `targetOutput`
+ * after applying the given fees.
+ *
+ * This is the inverse of `applyTransferProphet`: given the desired output,
+ * work backwards through the fee structure to find the smallest input that
+ * yields `netAmount >= targetOutput`. Returns `undefined` when no input can
+ * satisfy the target.
+ *
+ * For example:
+ *
+ *     targetOutput = 546
+ *     transferProphet fee rate = 100%
+ *
+ * In this case:
+ *
+ *     minInputForTargetOutput(546, transferProphet)
+ *
+ * returns `undefined`, because after the first step deducts its fees, it can
+ * never leave 546 for the second step.
+ */
+export const minInputForTargetOutput = (
+  targetOutput: BigNumber,
+  transferProphet: TransferProphet,
+): undefined | BigNumber => {
+  if (BigNumber.isLte(targetOutput, BigNumber.ZERO)) {
+    return BigNumber.ZERO
+  }
+
+  let fixedFeeAmount = BigNumber.ZERO
+
+  for (const fee of transferProphet.fees) {
+    if (fee.type === "fixed") {
+      if (isBridgeTokenFee(transferProphet, fee)) {
+        fixedFeeAmount = BigNumber.add(fixedFeeAmount, fee.amount)
+      }
+      continue
+    }
+
+    if (fee.type === "rate") {
+      assertBridgeTokenRateFee(transferProphet, fee)
+      continue
+    }
+
+    checkNever(fee)
+  }
+
+  // Each rate fee has two possible modes:
+  //
+  //   fee = minimumAmount  // when the input is still small
+  //   fee = input * rate   // when the input is large enough
+  //
+  // Example: minimumAmount = 100, rate = 10%.
+  //
+  //   input = 500  -> max(100, 500 * 10%)  = 100  (minimum mode)
+  //   input = 1000 -> max(100, 1000 * 10%) = 100  (switch point)
+  //   input = 2000 -> max(100, 2000 * 10%) = 200  (rate mode)
+  //
+  // The switch point is minimumAmount / rate. We call it a breakpoint.
+  const rateFeeBreakpoints = getBridgeTokenRateFees(transferProphet).map(
+    fee => ({
+      fee,
+      breakpoint: BigNumber.isZero(fee.rate)
+        ? undefined
+        : BigNumber.div(fee.minimumAmount, fee.rate),
+    }),
+  )
+
+  // All breakpoints split the whole input range into segments.
+  //
+  // For example, if fee A switches at 1000 and fee B switches at 5000, the
+  // segments are:
+  //
+  //   [0, 1000)       -> both fees are in minimum mode
+  //   [1000, 5000)    -> fee A is in rate mode, fee B is still in minimum mode
+  //   [5000, infinity)-> both fees are in rate mode
+  //
+  // Inside one segment, every fee's mode is fixed. That means net output is a
+  // straight line in that segment, so we can solve it with one formula.
+  const breakpoints = uniqueBigNumbers(
+    BigNumber.sort(
+      BigNumber.ascend,
+      [
+        BigNumber.ZERO,
+        ...rateFeeBreakpoints.flatMap(({ breakpoint }) =>
+          breakpoint == null ? [] : [breakpoint],
+        ),
+      ],
+    ),
+  )
+
+  for (let idx = 0; idx < breakpoints.length; idx++) {
+    const lowerBound = breakpoints[idx]
+    const upperBound = breakpoints[idx + 1]
+
+    // Decide which mode each fee uses in this segment.
+    //
+    // If the segment starts at or after a fee's breakpoint, that fee has already
+    // switched to rate mode for the entire segment. Otherwise it is still in
+    // minimum mode for this segment.
+    let activeRate = BigNumber.ZERO
+    let inactiveMinimumFeeAmount = BigNumber.ZERO
+    for (const { fee, breakpoint } of rateFeeBreakpoints) {
+      if (breakpoint != null && BigNumber.isGte(lowerBound, breakpoint)) {
+        activeRate = BigNumber.add(activeRate, fee.rate)
+      } else {
+        inactiveMinimumFeeAmount = BigNumber.add(
+          inactiveMinimumFeeAmount,
+          fee.minimumAmount,
+        )
+      }
+    }
+
+    // First check the segment start.
+    //
+    // If lowerBound already produces enough output, it must be the smallest
+    // valid input in this segment because every other point in the segment is
+    // larger than lowerBound.
+    const lowerBoundNetAmount = BigNumber.max([
+      BigNumber.ZERO,
+      BigNumber.minus(
+        lowerBound,
+        BigNumber.sum([
+          fixedFeeAmount,
+          inactiveMinimumFeeAmount,
+          BigNumber.mul(lowerBound, activeRate),
+        ]),
+      ),
+    ])
+    if (BigNumber.isGte(lowerBoundNetAmount, targetOutput)) {
+      return lowerBound
+    }
+
+    const retainedRate = BigNumber.minus(BigNumber.ONE, activeRate)
+    if (BigNumber.isLte(retainedRate, BigNumber.ZERO)) {
+      return undefined
+    }
+
+    // lowerBound was not enough, so solve for the first point inside this
+    // segment that can reach targetOutput.
+    //
+    // In this segment, rate-mode fees take a percentage of input, and
+    // minimum-mode fees are just constants:
+    //
+    //   net = input - fixedFeeAmount - inactiveMinimumFeeAmount - input * activeRate
+    //
+    // Rewrite it as:
+    //
+    //   net = input * (1 - activeRate) - fixedFeeAmount - inactiveMinimumFeeAmount
+    //
+    // So the input that makes net == targetOutput is:
+    //
+    //   input = (targetOutput + fixedFeeAmount + inactiveMinimumFeeAmount)
+    //           / (1 - activeRate)
+    const requiredInput = BigNumber.div(
+      BigNumber.sum([targetOutput, fixedFeeAmount, inactiveMinimumFeeAmount]),
+      retainedRate,
+    )
+
+    // The formula above is only valid for this segment. If the answer falls
+    // outside [lowerBound, upperBound], then it belongs to another segment where
+    // a different set of fees is in rate mode.
+    if (
+      BigNumber.isLt(requiredInput, lowerBound) ||
+      (upperBound != null && BigNumber.isGt(requiredInput, upperBound))
+    ) {
+      continue
+    }
+
+    if (
+      BigNumber.isGte(
+        applyTransferProphet(transferProphet, requiredInput).netAmount,
+        targetOutput,
+      )
+    ) {
+      return requiredInput
+    }
+  }
+
+  return undefined
+}
+
+function uniqueBigNumbers(numbers: BigNumber[]): BigNumber[] {
+  const result: BigNumber[] = []
+  for (const n of numbers) {
+    if (!result.some(existing => BigNumber.isEq(existing, n))) {
+      result.push(n)
+    }
+  }
+  return result
 }
 
 export const composeRates2 = (

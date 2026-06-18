@@ -36,6 +36,53 @@ export type TransferProphet_Fee =
   | TransferProphet_Fee_Rate
   | TransferProphet_Fee_Fixed
 
+export function isSameTransferProphetFee(
+  a: TransferProphet_Fee,
+  b: TransferProphet_Fee,
+) {
+  if (a.type !== b.type) {
+    return false
+  }
+
+  if (a.type === "rate") {
+    if (b.type !== "rate") return false
+    return (
+      a.token === b.token &&
+      BigNumber.isEq(a.rate, b.rate) &&
+      BigNumber.isEq(a.minimumAmount, b.minimumAmount)
+    )
+  }
+
+  if (a.type === "fixed") {
+    if (b.type !== "fixed") return false
+    return a.token === b.token && BigNumber.isEq(a.amount, b.amount)
+  }
+
+  checkNever(a)
+  return false
+}
+
+export function isSameTransferProphetFeeSet(
+  a: TransferProphet_Fee[],
+  b: TransferProphet_Fee[],
+): boolean {
+  if (a.length !== b.length) return false
+
+  const _a = [...a]
+  const _b = [...b]
+
+  let aRateFee = _a.pop()
+  while (aRateFee != null) {
+    const bRateFeeIndex = _b.findIndex(bRateFee => isSameTransferProphetFee(aRateFee!, bRateFee))
+    if (bRateFeeIndex === -1) return false
+
+    _b.splice(bRateFeeIndex, 1)
+    aRateFee = _a.pop()
+  }
+  return _b.length === 0
+}
+
+
 export interface TransferProphet {
   isPaused: boolean
   bridgeToken: KnownTokenId.KnownToken

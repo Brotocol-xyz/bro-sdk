@@ -46,7 +46,13 @@ import {
   KnownTokenId,
 } from "../utils/types/knownIds"
 import { constructDexAggregatorIntermediaryInfo } from "./bridgeInfoFromBitcoin"
-import { ChainId, SDKNumber, TokenId } from "./types"
+import { resolveBitcoinDestinationScriptPubKey } from "./bitcoinDestinationHelpers"
+import {
+  BridgeInfoBitcoinDestinationInfo,
+  ChainId,
+  SDKNumber,
+  TokenId,
+} from "./types"
 import { SDKGlobalContext } from "./types.internal"
 
 export {
@@ -56,7 +62,8 @@ export {
   BridgeInfoFromMetaOutput as BridgeInfoFromRunesOutput,
 }
 
-export interface BridgeInfoFromMetaInput {
+export interface BridgeInfoFromMetaInput
+  extends BridgeInfoBitcoinDestinationInfo {
   fromChain: ChainId
   toChain: ChainId
   fromToken: TokenId
@@ -550,12 +557,10 @@ async function bridgeInfoFromMeta_toEVM(
   const nonNullableRoutes = routes.filter(isNotNull)
   const nonNullableSteps = steps.filter(isNotNull)
   if (
-    nonNullableSteps == null ||
     !hasAny(nonNullableSteps) ||
-    nonNullableSteps.length !== steps?.length ||
-    nonNullableRoutes == null ||
+    nonNullableSteps.length !== steps.length ||
     !hasAny(nonNullableRoutes) ||
-    nonNullableRoutes.length !== routes?.length ||
+    nonNullableRoutes.length !== routes.length ||
     !hasAny(exchangeRates)
   ) {
     throw new UnsupportedBridgeRouteError(
@@ -602,6 +607,11 @@ async function bridgeInfoFromMeta_toBitcoin(
 
   const { firstStepToStacksToken, lastStepFromStacksToken } =
     headAndTailStacksTokens
+  const toAddressScriptPubKey = resolveBitcoinDestinationScriptPubKey(
+    "bridgeInfoFromMeta",
+    info.toChain,
+    info,
+  )
 
   let routes: (undefined | KnownRoute)[]
   let steps: (undefined | TransferProphet)[]
@@ -629,6 +639,7 @@ async function bridgeInfoFromMeta_toBitcoin(
       getStacks2BtcFeeInfo(ctx, _routes[1], {
         swapRoute: info.swapRoute ?? null,
         initialRoute: _routes[0],
+        toAddressScriptPubKey,
       }),
     ])
 
@@ -685,6 +696,7 @@ async function bridgeInfoFromMeta_toBitcoin(
       getStacks2BtcFeeInfo(ctx, btcPegOutRoute, {
         initialRoute: last(intermediaryInfo.routes) as KnownRoute_ToStacks,
         swapRoute: null,
+        toAddressScriptPubKey,
       }),
     ])
 
@@ -705,12 +717,10 @@ async function bridgeInfoFromMeta_toBitcoin(
   const nonNullableRoutes = routes.filter(isNotNull)
   const nonNullableSteps = steps.filter(isNotNull)
   if (
-    nonNullableSteps == null ||
     !hasAny(nonNullableSteps) ||
-    nonNullableSteps.length !== steps?.length ||
-    nonNullableRoutes == null ||
+    nonNullableSteps.length !== steps.length ||
     !hasAny(nonNullableRoutes) ||
-    nonNullableRoutes.length !== routes?.length ||
+    nonNullableRoutes.length !== routes.length ||
     !hasAny(exchangeRates)
   ) {
     throw new UnsupportedBridgeRouteError(
@@ -865,12 +875,10 @@ async function bridgeInfoFromMeta_toMeta(
   const nonNullableRoutes = routes.filter(isNotNull)
   const nonNullableSteps = steps.filter(isNotNull)
   if (
-    nonNullableSteps == null ||
     !hasAny(nonNullableSteps) ||
-    nonNullableSteps.length !== steps?.length ||
-    nonNullableRoutes == null ||
+    nonNullableSteps.length !== steps.length ||
     !hasAny(nonNullableRoutes) ||
-    nonNullableRoutes.length !== routes?.length ||
+    nonNullableRoutes.length !== routes.length ||
     !hasAny(exchangeRates)
   ) {
     throw new UnsupportedBridgeRouteError(
@@ -1018,12 +1026,10 @@ async function bridgeInfoFromMeta_toSolana(
   const nonNullableRoutes = routes.filter(isNotNull)
   const nonNullableSteps = steps.filter(isNotNull)
   if (
-    nonNullableSteps == null ||
     !hasAny(nonNullableSteps) ||
-    nonNullableSteps.length !== steps?.length ||
-    nonNullableRoutes == null ||
+    nonNullableSteps.length !== steps.length ||
     !hasAny(nonNullableRoutes) ||
-    nonNullableRoutes.length !== routes?.length ||
+    nonNullableRoutes.length !== routes.length ||
     !hasAny(exchangeRates)
   ) {
     throw new UnsupportedBridgeRouteError(

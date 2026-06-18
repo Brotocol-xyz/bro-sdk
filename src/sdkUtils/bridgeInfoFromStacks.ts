@@ -1,4 +1,5 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
+import { resolveBitcoinDestinationScriptPubKey } from "./bitcoinDestinationHelpers"
 import { getStacks2EvmFeeInfo } from "../evmUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
 import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
@@ -19,10 +20,16 @@ import {
   transformToPublicTransferProphet,
 } from "../utils/types/TransferProphet"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
-import { ChainId, SDKNumber, TokenId } from "./types"
+import {
+  BridgeInfoBitcoinDestinationInfo,
+  ChainId,
+  SDKNumber,
+  TokenId,
+} from "./types"
 import { SDKGlobalContext } from "./types.internal"
 
-export interface BridgeInfoFromStacksInput {
+export interface BridgeInfoFromStacksInput
+  extends BridgeInfoBitcoinDestinationInfo {
   fromChain: ChainId
   toChain: ChainId
   fromToken: TokenId
@@ -148,9 +155,15 @@ async function bridgeInfoFromStacks_toBitcoin(
   > &
     KnownRoute_FromStacks_ToBitcoin,
 ): Promise<BridgeInfoFromStacksOutput> {
+  const toAddressScriptPubKey = resolveBitcoinDestinationScriptPubKey(
+    "bridgeInfoFromStacks",
+    info.toChain,
+    info,
+  )
   const step1 = await getStacks2BtcFeeInfo(ctx, info, {
     initialRoute: null,
     swapRoute: null,
+    toAddressScriptPubKey,
   })
   if (step1 == null) {
     throw new UnsupportedBridgeRouteError(

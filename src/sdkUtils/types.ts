@@ -6,8 +6,8 @@ import { InvalidMethodParametersError } from "../utils/errors"
 
 /**
  * A branded literal type used for SDK-specific types `ChainId`, `TokenId` and `SDKNumber`.
- * 
- * For example: 
+ *
+ * For example:
  * - `"bitcoin-mainnet (BroSDK ChainId)"` represents a valid `ChainId`
  * - `"brc20-something (BroSDK TokenId)"` represents a valid `TokenId`
  * - `"10 (BroSDK number)"` represents a valid `SDKNumber`
@@ -27,6 +27,22 @@ export type ChainId<T extends string = string> = SDKBrandedLiteral<"ChainId", T>
 export type TokenId<T extends string = string> = SDKBrandedLiteral<"TokenId", T>
 
 export type SDKNumber = SDKBrandedLiteral<"number", string>
+
+export interface BridgeInfoBitcoinDestinationInfo {
+  /**
+   * Optional Bitcoin destination address. When provided and the destination
+   * chain is Bitcoin, the dust threshold is calculated dynamically from the
+   * address type. Falls back to the conservative P2PKH value (546 sat) when
+   * omitted.
+   */
+  toAddress?: string
+  /**
+   * Optional Bitcoin destination script public key. When provided, this is used
+   * as the authoritative output script for dust calculation.
+   */
+  toAddressScriptPubKey?: Uint8Array
+}
+
 export type SDKNumberifyNestly<T> =
   {
   // prettier-ignore
@@ -66,7 +82,9 @@ export function toSDKNumberOrUndefined<
   return BigNumber.toString(n) as SDKNumber
 }
 
-export function formatSDKNumber(n: SDKNumber | number | bigint | BigNumber): `${number}` {
+export function formatSDKNumber(
+  n: SDKNumber | number | bigint | BigNumber,
+): `${number}` {
   return toSDKNumberOrUndefined(n) as `${number}`
 }
 

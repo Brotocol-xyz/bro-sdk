@@ -1,4 +1,5 @@
 import { getStacks2BtcFeeInfo } from "../bitcoinUtils/peggingHelpers"
+import { resolveBitcoinDestinationScriptPubKey } from "./bitcoinDestinationHelpers"
 import {
   getSolana2StacksFeeInfo,
   getStacks2SolanaFeeInfo,
@@ -29,10 +30,16 @@ import {
   transformToPublicTransferProphetAggregated2,
 } from "../utils/types/TransferProphet"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
-import { ChainId, SDKNumber, TokenId } from "./types"
+import {
+  BridgeInfoBitcoinDestinationInfo,
+  ChainId,
+  SDKNumber,
+  TokenId,
+} from "./types"
 import { SDKGlobalContext } from "./types.internal"
 
-export interface BridgeInfoFromSolanaInput {
+export interface BridgeInfoFromSolanaInput
+  extends BridgeInfoBitcoinDestinationInfo {
   fromChain: ChainId
   toChain: ChainId
   fromToken: TokenId
@@ -227,11 +234,18 @@ async function bridgeInfoFromSolana_toBitcoin(
     toToken: info.toToken,
   }
 
+  const toAddressScriptPubKey = resolveBitcoinDestinationScriptPubKey(
+    "bridgeInfoFromSolana",
+    info.toChain,
+    info,
+  )
+
   const [step1, step2] = await Promise.all([
     getSolana2StacksFeeInfo(ctx, step1Route),
     getStacks2BtcFeeInfo(ctx, step2Route, {
       initialRoute: step1Route,
       swapRoute: null,
+      toAddressScriptPubKey,
     }),
   ])
   if (step1 == null || step2 == null) {
@@ -456,4 +470,4 @@ async function bridgeInfoFromSolana_toTron(
     KnownRoute_FromSolana_ToTron,
 ): Promise<BridgeInfoFromSolanaOutput> {
   throw new Error("WIP")
-} 
+}
