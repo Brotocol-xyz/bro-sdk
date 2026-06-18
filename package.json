@@ -52,7 +52,7 @@
     "gen": "pnpm run gen:stacksContract",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
-    "build": "pnpm run gen && rm -rf lib && tsup-node src",
+    "build": "pnpm run gen && rm -rf lib && NODE_OPTIONS=--max-old-space-size=8192 tsup-node src",
     "prepare": "pnpm run build",
     "test": "vitest --exclude lib --run"
   },

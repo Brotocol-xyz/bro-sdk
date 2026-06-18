@@ -5,3 +5,4 @@ lib/
 .envrc.*.local
 .envrc.local
 .claude
+.mise.local.toml
