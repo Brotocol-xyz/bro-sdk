@@ -2,6 +2,10 @@ import { getEVMSupportedRoutes } from "../evmUtils/apiHelpers/getEVMSupportedRou
 import { getBRC20SupportedRoutes } from "../metaUtils/apiHelpers/getBRC20SupportedRoutes"
 import { getRunesSupportedRoutes } from "../metaUtils/apiHelpers/getRunesSupportedRoutes"
 import {
+  getReserveAmount,
+  withMaxBridgeAmountReserve,
+} from "../sdkUtils/apiHelpers/getReserveInfo"
+import {
   SDKGlobalContext,
   withGlobalContextCache,
 } from "../sdkUtils/types.internal"
@@ -187,11 +191,18 @@ export const getStacks2BtcFeeInfo = async (
     ].join("#"),
     () => _getStacks2BtcFeeInfo(ctx, route, options),
   )
-
   if (transferProphet == null) return
-  return adjustTransferProphetForBitcoinDust(
+
+  const adjustedTransferProphet = adjustTransferProphetForBitcoinDust(
     transferProphet,
     options.toAddressScriptPubKey,
+  )
+  return withMaxBridgeAmountReserve(
+    adjustedTransferProphet,
+    await getReserveAmount(ctx, {
+      chain: route.toChain,
+      token: route.toToken,
+    }),
   )
 }
 const _getStacks2BtcFeeInfo = async (

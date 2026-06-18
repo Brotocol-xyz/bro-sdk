@@ -6,9 +6,7 @@ import {
   getEvm2StacksFeeInfo,
   getStacks2EvmFeeInfo,
 } from "../evmUtils/peggingHelpers"
-import {
-  getStacks2SolanaFeeInfo,
-} from "../solanaUtils/peggingHelpers"
+import { getStacks2SolanaFeeInfo } from "../solanaUtils/peggingHelpers"
 import { getStacks2MetaFeeInfo } from "../metaUtils/peggingHelpers"
 import {
   executeReadonlyCallBro,
@@ -45,6 +43,7 @@ import {
 } from "../utils/types/TransferProphet"
 import { KnownChainId, KnownTokenId } from "../utils/types/knownIds"
 import { ChainId, SDKNumber, TokenId } from "./types"
+import { getReserveAmount } from "./apiHelpers/getReserveInfo"
 import { SDKGlobalContext } from "./types.internal"
 
 export interface BridgeInfoFromBitcoinInput {
@@ -868,6 +867,10 @@ export async function bridgeInfoFromBitcoin_toLaunchpad(
       {},
       contractCallInfo.executeOptions,
     ).then(numberFromStacksContractNumber),
+    reserve: getReserveAmount(ctx, {
+      chain: info.fromChain,
+      token: info.fromToken,
+    }),
   })
 
   const transferProphet: TransferProphet = {
@@ -884,7 +887,7 @@ export async function bridgeInfoFromBitcoin_toLaunchpad(
     minBridgeAmount: BigNumber.isZero(resp.minFeeAmount)
       ? null
       : resp.minFeeAmount,
-    maxBridgeAmount: null,
+    maxBridgeAmount: resp.reserve,
   }
 
   return {

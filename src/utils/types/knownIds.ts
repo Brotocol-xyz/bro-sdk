@@ -19,10 +19,44 @@ export const createBRC20Token = (
 ): KnownTokenId.BRC20Token => {
   return `brc20-${brc20tick}` as any
 }
+/**
+ * External/special escape hatch only. SDK internal code should not use this to
+ * obtain a BRC20 tick because KnownTokenId values can be constructed freely and
+ * the returned tick may be fake or wrong.
+ */
+export const MAY_GET_WRONG_RESULT_extractBRC20TickFromTokenId = (
+  token: KnownTokenId.BRC20Token,
+): string | null => {
+  const prefix = "brc20-"
+
+  if (!token.startsWith(prefix)) return null
+
+  const tick = token.slice(prefix.length)
+
+  return tick === "" ? null : tick
+}
 export const createRunesToken = (
   runeId: RuneIdCombined,
 ): KnownTokenId.RunesToken => {
   return `runes-${runeId}` as any
+}
+/**
+ * External/special escape hatch only. SDK internal code should not use this to
+ * obtain a runeId because KnownTokenId values can be constructed freely and the
+ * returned runeId may be fake or wrong.
+ */
+export const MAY_GET_WRONG_RESULT_extractRuneIdFromTokenId = (
+  token: KnownTokenId.RunesToken,
+): RuneIdCombined | null => {
+  const prefix = "runes-"
+
+  if (!token.startsWith(prefix)) return null
+
+  const runeId = token.slice(prefix.length)
+
+  if (!/^\d+:\d+$/.test(runeId)) return null
+
+  return runeId as RuneIdCombined
 }
 export const createEVMToken = (
   evmChain: KnownChainId.EVMChain,

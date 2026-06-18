@@ -39,6 +39,10 @@ import {
 } from "../sdkUtils/types.internal"
 import { getBRC20SupportedRoutes } from "./apiHelpers/getBRC20SupportedRoutes"
 import { getRunesSupportedRoutes } from "./apiHelpers/getRunesSupportedRoutes"
+import {
+  getReserveAmount,
+  withMaxBridgeAmountReserve,
+} from "../sdkUtils/apiHelpers/getReserveInfo"
 import { getMetaPegInAddress } from "./btcAddresses"
 import { getTronSupportedRoutes } from "../tronUtils/getTronSupportedRoutes"
 import { getSolanaSupportedRoutes } from "../solanaUtils/getSolanaSupportedRoutes"
@@ -111,22 +115,21 @@ const getMeta2StacksBaseFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromBRC20_ToStacks | KnownRoute_FromRunes_ToStacks,
 ): Promise<undefined | TransferProphet> => {
-  const filteredRoutes = KnownChainId.isBRC20Chain(route.fromChain)
+  const filteredRoute = KnownChainId.isBRC20Chain(route.fromChain)
     ? await getBRC20SupportedRoutes(ctx, route.fromChain).then(routes =>
-        routes.filter(
+        routes.find(
           _route =>
             _route.brc20Token === route.fromToken &&
             _route.stacksToken === route.toToken,
         ),
       )
     : await getRunesSupportedRoutes(ctx, route.fromChain).then(routes =>
-        routes.filter(
+        routes.find(
           _route =>
             _route.runesToken === route.fromToken &&
             _route.stacksToken === route.toToken,
         ),
       )
-  const filteredRoute = filteredRoutes[0]
   if (filteredRoute == null) return
 
   if (ctx.debugLog) {
@@ -230,32 +233,9 @@ const getMeta2StacksSwapFeeInfo = async (
 export const getStacks2MetaFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromStacks_ToBRC20 | KnownRoute_FromStacks_ToRunes,
-  options: {
-    /**
-     * The entry route step that triggered the Stacks transaction.
-     * It's crucial for correctly calculating fees in multi-step bridging
-     * processes.
-     *
-     * Examples:
-     *
-     * * BTC > Runes (`via: ALEX`):
-     *     1. btc > stacks (initialRoute)
-     *     2. stacks > runes
-     * * BTC > Runes (`via: evmDexAggregator`):
-     *     1. btc > stacks (initialRoute as well, but not what we want)
-     *     2. stacks > evm
-     *     3. evm swap
-     *     4. evm > stacks (initialRoute for this partition)
-     *     5. stacks > runes
-     */
-    initialRoute: null | KnownRoute_ToStacks
-    /**
-     * the swap step between the previous route and the current one
-     */
-    swapRoute: null | Pick<SwapRoute, "via">
-  },
+  options: Stacks2MetaFeeInfoOptions,
 ): Promise<undefined | TransferProphet> => {
-  return withGlobalContextCache(
+  const cachedFeeInfo = await withGlobalContextCache(
     ctx.brc20.feeRateCache,
     [
       withGlobalContextCache.cacheKeyFromRoute(route),
@@ -264,53 +244,73 @@ export const getStacks2MetaFeeInfo = async (
         : withGlobalContextCache.cacheKeyFromRoute(options.initialRoute),
       options.swapRoute == null ? "" : options.swapRoute.via,
     ].join("#"),
-    () => _getStacks2MetaFeeInfo(ctx, route, options),
+    () => _getStacks2MetaCachedFeeInfo(ctx, route, options),
   )
+  if (cachedFeeInfo == null) return undefined
+
+  const reserve = await getReserveAmount(
+    ctx,
+    KnownChainId.isBRC20Chain(route.toChain)
+      ? {
+          chain: route.toChain,
+          token: route.toToken as KnownTokenId.BRC20Token,
+        }
+      : {
+          chain: route.toChain,
+          token: route.toToken as KnownTokenId.RunesToken,
+        },
+  )
+
+  return withMaxBridgeAmountReserve(cachedFeeInfo, reserve)
 }
-const _getStacks2MetaFeeInfo = async (
+
+type Stacks2MetaFeeInfoOptions = {
+  /**
+   * The entry route step that triggered the Stacks transaction.
+   * It's crucial for correctly calculating fees in multi-step bridging
+   * processes.
+   *
+   * Examples:
+   *
+   * * BTC > Runes (`via: ALEX`):
+   *     1. btc > stacks (initialRoute)
+   *     2. stacks > runes
+   * * BTC > Runes (`via: evmDexAggregator`):
+   *     1. btc > stacks (initialRoute as well, but not what we want)
+   *     2. stacks > evm
+   *     3. evm swap
+   *     4. evm > stacks (initialRoute for this partition)
+   *     5. stacks > runes
+   */
+  initialRoute: null | KnownRoute_ToStacks
+  /**
+   * the swap step between the previous route and the current one
+   */
+  swapRoute: null | Pick<SwapRoute, "via">
+}
+
+type Stacks2MetaCachedFeeInfo = TransferProphet
+
+const _getStacks2MetaCachedFeeInfo = async (
   ctx: SDKGlobalContext,
   route: KnownRoute_FromStacks_ToBRC20 | KnownRoute_FromStacks_ToRunes,
-  options: {
-    /**
-     * The entry route step that triggered the Stacks transaction.
-     * It's crucial for correctly calculating fees in multi-step bridging
-     * processes.
-     *
-     * Examples:
-     *
-     * * BTC > Runes (`via: ALEX`):
-     *     1. btc > stacks (initialRoute)
-     *     2. stacks > runes
-     * * BTC > Runes (`via: evmDexAggregator`):
-     *     1. btc > stacks (initialRoute as well, but not what we want)
-     *     2. stacks > evm
-     *     3. evm swap
-     *     4. evm > stacks (initialRoute for this partition)
-     *     5. stacks > runes
-     */
-    initialRoute: null | KnownRoute_ToStacks
-    /**
-     * the swap step between the previous route and the current one
-     */
-    swapRoute: null | Pick<SwapRoute, "via">
-  },
-): Promise<undefined | TransferProphet> => {
-  const filteredRoutes = KnownChainId.isBRC20Chain(route.toChain)
+  options: Stacks2MetaFeeInfoOptions,
+): Promise<undefined | Stacks2MetaCachedFeeInfo> => {
+  const filteredRoute = KnownChainId.isBRC20Chain(route.toChain)
     ? await getBRC20SupportedRoutes(ctx, route.toChain).then(routes =>
-        routes.filter(
+        routes.find(
           _route =>
             _route.stacksToken === route.fromToken &&
             _route.brc20Token === route.toToken,
         ),
       )
     : await getRunesSupportedRoutes(ctx, route.toChain).then(routes =>
-        routes.filter(
+        routes.find(
           _route =>
             _route.stacksToken === route.fromToken &&
             _route.runesToken === route.toToken,
         ),
       )
-  const filteredRoute = filteredRoutes[0]
   if (filteredRoute == null) return
 
   const specialFeeInfo = await getSpecialFeeDetailsForSwapRoute(ctx, route, {
@@ -448,16 +448,16 @@ export const isSupportedBRC20Route: IsSupportedFn = async (ctx, route) => {
     const brc20Routes = await getBRC20SupportedRoutes(ctx, toChain)
 
     return (
-      brc20Routes.find(
+      brc20Routes.some(
         route =>
           route.brc20Token === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      brc20Routes.find(
+      ) &&
+      brc20Routes.some(
         route =>
           route.brc20Token === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -469,16 +469,16 @@ export const isSupportedBRC20Route: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getRunesSupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.brc20Token === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.runesToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -490,16 +490,16 @@ export const isSupportedBRC20Route: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getTronSupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.brc20Token === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.tronToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -511,16 +511,16 @@ export const isSupportedBRC20Route: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.brc20Token === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.solanaToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -613,16 +613,16 @@ export const isSupportedRunesRoute: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getBRC20SupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.runesToken === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.brc20Token === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -633,16 +633,16 @@ export const isSupportedRunesRoute: IsSupportedFn = async (ctx, route) => {
     const runesRoutes = await getRunesSupportedRoutes(ctx, fromChain)
 
     return (
-      runesRoutes.find(
+      runesRoutes.some(
         route =>
           route.runesToken === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      runesRoutes.find(
+      ) &&
+      runesRoutes.some(
         route =>
           route.runesToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -654,16 +654,16 @@ export const isSupportedRunesRoute: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getTronSupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.runesToken === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.tronToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 
@@ -675,16 +675,16 @@ export const isSupportedRunesRoute: IsSupportedFn = async (ctx, route) => {
     const toRoutes = await getSolanaSupportedRoutes(ctx, toChain)
 
     return (
-      fromRoutes.find(
+      fromRoutes.some(
         route =>
           route.runesToken === fromToken &&
           route.stacksToken === firstStepToStacksToken,
-      ) != null &&
-      toRoutes.find(
+      ) &&
+      toRoutes.some(
         route =>
           route.solanaToken === toToken &&
           route.stacksToken === lastStepFromStacksToken,
-      ) != null
+      )
     )
   }
 

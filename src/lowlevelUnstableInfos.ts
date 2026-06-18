@@ -82,6 +82,11 @@ export {
 
 export { addressFromBuffer, addressToBuffer } from "./utils/addressHelpers"
 
+export {
+  MAY_GET_WRONG_RESULT_extractBRC20TickFromTokenId,
+  MAY_GET_WRONG_RESULT_extractRuneIdFromTokenId,
+} from "./utils/types/knownIds"
+
 export { bridgeFromEVM_toLaunchpad } from "./sdkUtils/bridgeFromEVM"
 export { bridgeInfoFromEVM_toLaunchpad } from "./sdkUtils/bridgeInfoFromEVM"
 export { bridgeInfoFromBitcoin_toLaunchpad } from "./sdkUtils/bridgeInfoFromBitcoin"
