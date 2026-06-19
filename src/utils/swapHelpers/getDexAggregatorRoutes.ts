@@ -9,7 +9,7 @@ import {
   getQueryableRoutes,
 } from "./fetchDexAggregatorPossibleRoutes/helpers"
 
-export { DexAggregatorRoute } from "./fetchDexAggregatorPossibleRoutes/helpers"
+export { type DexAggregatorRoute } from "./fetchDexAggregatorPossibleRoutes/helpers"
 
 export async function getDexAggregatorRoutes(
   sdkContext: SDKGlobalContext,

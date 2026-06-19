@@ -248,7 +248,7 @@ export {
   fetchMatchaPossibleRoutesFactory,
   FetchMatchaPossibleRoutesFailedError
 } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/fetchMatchaPossibleRoutes"
-export { FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
+export { type FetchRoutesImpl } from "./utils/swapHelpers/fetchDexAggregatorPossibleRoutes/helpers"
 export interface DexAggregatorRoute
   extends Omit<_DexAggregatorRoute, "fromAmount" | "toAmount" | "slippage"> {
   fromAmount: SDKNumber

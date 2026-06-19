@@ -6,3 +6,5 @@ lib/
 .envrc.local
 .claude
 .mise.local.toml
+node-compile-cache/
+tsx-*

@@ -56,10 +56,10 @@ import {
 import { SDKGlobalContext } from "./types.internal"
 
 export {
-  BridgeInfoFromMetaInput as BridgeInfoFromBRC20Input,
-  BridgeInfoFromMetaOutput as BridgeInfoFromBRC20Output,
-  BridgeInfoFromMetaInput as BridgeInfoFromRunesInput,
-  BridgeInfoFromMetaOutput as BridgeInfoFromRunesOutput,
+  type BridgeInfoFromMetaInput as BridgeInfoFromBRC20Input,
+  type BridgeInfoFromMetaOutput as BridgeInfoFromBRC20Output,
+  type BridgeInfoFromMetaInput as BridgeInfoFromRunesInput,
+  type BridgeInfoFromMetaOutput as BridgeInfoFromRunesOutput,
 }
 
 export interface BridgeInfoFromMetaInput

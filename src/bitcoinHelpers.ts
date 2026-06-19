@@ -3,7 +3,7 @@ import { selectUTXOs as selectUTXOsImpl } from "./bitcoinUtils/selectUTXOs"
 import { isNotNull } from "./utils/typeHelpers"
 
 export {
-  BitcoinNetwork,
+  type BitcoinNetwork,
   bitcoinToSatoshi,
   getP2TRInternalPublicKey_from_P2TR_publicKey,
   getRedeemScript_from_P2SH_P2WPKH_publicKey,
@@ -11,19 +11,19 @@ export {
   isSameUTXO,
   satoshiToBitcoin,
   sumUTXO,
-  UTXOBasic,
-  UTXOConfirmed,
-  UTXOSpendable,
+  type UTXOBasic,
+  type UTXOConfirmed,
+  type UTXOSpendable,
 } from "./bitcoinUtils/bitcoinHelpers"
 export { createTransaction } from "./bitcoinUtils/createTransaction"
 export {
-  BitcoinRecipient,
-  BitcoinTransactionPrepareResult,
+  type BitcoinRecipient,
+  type BitcoinTransactionPrepareResult,
   prepareTransaction,
-  ReselectSpendableUTXOsFn,
+  type ReselectSpendableUTXOsFn,
 } from "./bitcoinUtils/prepareTransaction"
 export {
-  GetConfirmedSpendableUTXOFn,
+  type GetConfirmedSpendableUTXOFn,
   reselectSpendableUTXOsFactory,
   reselectSpendableUTXOsWithSafePadFactory,
 } from "./bitcoinUtils/selectUTXOs"

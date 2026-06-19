@@ -1,4 +1,4 @@
-import pkgInfo from "../package.json" assert { type: "json" }
+import pkgInfo from "../package.json" with { type: "json" }
 import path from "node:path"
 
 const entryPoints = Object.keys(pkgInfo.exports).map(i => {
